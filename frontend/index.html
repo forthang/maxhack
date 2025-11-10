@@ -4,6 +4,35 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Университетское приложение</title>
+    <!-- Подключаем Tailwind CSS с CDN для корректной работы стилей без локальной сборки -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Настройка Tailwind для поддержки тёмной темы через класс
+      tailwind.config = {
+        darkMode: 'class',
+      };
+    </script>
+
+    <!-- Дополнительные стили для анимаций и индивидуального дизайна.
+         Эти правила определяют простую анимацию появления для элементов
+         расписания и событий. Класс `.fade-in` плавно увеличивает
+         непрозрачность и перемещает элемент на место. Вы можете
+         расширить этот блок любыми кастомными keyframes по аналогии. -->
+    <style>
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .fade-in {
+        animation: fadeIn 0.6s ease-out forwards;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

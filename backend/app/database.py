@@ -43,20 +43,39 @@ def init_db() -> None:
     """
     from . import models  # noqa: F401 – import models to register with metadata
 
-    # Create all tables if they do not exist.
+    # Create all tables if they do not exist based on SQLAlchemy models.
+    # This uses the metadata from models.py which should include all columns.
     Base.metadata.create_all(bind=engine)
 
-    # Seed the database with sample universities, schedule items and events
+    # Perform a lightweight migration to add any missing columns prior to
+    # querying the ORM. Without this, SQLAlchemy will attempt to select
+    # attributes that do not exist on older schemas, causing an error.
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        # Add duration_hours column to events if it does not exist. This ensures
+        # the ORM can select this attribute without causing an undefined column
+        # error. In a real project, use Alembic for proper migrations.
+        conn.execute(text(
+            "ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS duration_hours INTEGER DEFAULT 2"
+        ))
+        conn.commit()
+
+    # Seed the database with sample data only if the tables are empty. To avoid
+    # selecting a non‑existent column when checking for emptiness, use raw SQL
+    # rather than the ORM. This ensures compatibility with older schemas.
     db = SessionLocal()
     try:
-        # Only seed if tables are empty
-        if db.query(models.University).count() == 0:
+        # Universities
+        uni_count = db.execute(text("SELECT COUNT(*) FROM universities")).scalar()
+        if not uni_count:
             uni1 = models.University(name="Московский Политех", points=150)
             uni2 = models.University(name="Технопарк МГТУ", points=120)
             uni3 = models.University(name="СПбГУ", points=90)
             db.add_all([uni1, uni2, uni3])
 
-        if db.query(models.ScheduleItem).count() == 0:
+        # Schedule items
+        schedule_count = db.execute(text("SELECT COUNT(*) FROM schedule")).scalar()
+        if not schedule_count:
             from datetime import datetime, timedelta
             now = datetime.utcnow()
             lesson1 = models.ScheduleItem(
@@ -71,17 +90,21 @@ def init_db() -> None:
             )
             db.add_all([lesson1, lesson2])
 
-        if db.query(models.Event).count() == 0:
+        # Events
+        event_count = db.execute(text("SELECT COUNT(*) FROM events")).scalar()
+        if not event_count:
             from datetime import datetime, timedelta
             event1 = models.Event(
                 event_time=datetime.utcnow() + timedelta(days=2),
                 title="Хакатон",
-                description="Участвуйте в командном хакатоне и выиграйте призы!"
+                description="Участвуйте в командном хакатоне и выиграйте призы!",
+                duration_hours=2,
             )
             event2 = models.Event(
                 event_time=datetime.utcnow() + timedelta(days=3),
                 title="Семинар по карьере",
-                description="Поговорим о карьерных возможностях для студентов."
+                description="Поговорим о карьерных возможностях для студентов.",
+                duration_hours=2,
             )
             db.add_all([event1, event2])
 

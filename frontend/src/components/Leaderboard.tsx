@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Panel, Flex, Typography, Container } from '@maxhub/max-ui';
 
 interface LeaderboardEntry {
   university: {
@@ -34,25 +33,31 @@ const Leaderboard: React.FC = () => {
   }, []);
 
   return (
-    <Panel mode="secondary" className="leaderboard-panel">
-      <Typography.Title style={{ padding: '8px 16px' }}>Лидеры вузов</Typography.Title>
+    <div className="p-4">
+      <h2 className="text-2xl font-semibold mb-4">Лидеры вузов</h2>
       {loading ? (
-        <Typography.Text style={{ padding: '16px' }}>Загрузка...</Typography.Text>
+        <p>Загрузка...</p>
       ) : (
-        <Flex direction="column" gap={8} style={{ padding: '0 8px 80px 8px' }}>
+        <div className="space-y-4 pb-20">
           {entries.map((entry) => (
-            <Container key={entry.university.id} style={{ border: '1px solid #eee', borderRadius: '8px', padding: '8px' }}>
-              <Flex justify="space-between" align="center">
-                <Typography.Title level={5}>
-                  {entry.rank}. {entry.university.name}
-                </Typography.Title>
-                <Typography.Text>{entry.university.points} баллов</Typography.Text>
-              </Flex>
-            </Container>
+            <div
+              key={entry.university.id}
+              className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 border border-gray-100 dark:border-gray-700 flex items-center justify-between"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-200 text-sm font-semibold">
+                  {entry.rank}
+                </div>
+                <span className="font-medium text-gray-700 dark:text-gray-200">
+                  {entry.university.name}
+                </span>
+              </div>
+              <span className="text-gray-800 dark:text-gray-300">{entry.university.points} баллов</span>
+            </div>
           ))}
-        </Flex>
+        </div>
       )}
-    </Panel>
+    </div>
   );
 };
 

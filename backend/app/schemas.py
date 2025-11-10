@@ -37,7 +37,9 @@ class UserOut(UserBase):
     id: int
 
     class Config:
-        orm_mode = True
+        # In Pydantic v2, `from_attributes` replaces `orm_mode` to allow
+        # creating models from ORM objects.
+        from_attributes = True
 
 
 class UniversityBase(BaseModel):
@@ -49,7 +51,7 @@ class UniversityOut(UniversityBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ScheduleItemBase(BaseModel):
@@ -64,20 +66,21 @@ class ScheduleItemOut(ScheduleItemBase):
     signed_up: bool = False
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class EventBase(BaseModel):
     event_time: datetime
     title: str
     description: str
+    duration_hours: int = Field(default=2, ge=1, le=12, description="Длительность события в часах")
 
 
 class EventOut(EventBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class LeaderboardEntry(BaseModel):

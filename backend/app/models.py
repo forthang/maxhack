@@ -93,6 +93,9 @@ class Event(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
 
+    # Длительность события в часах. Значение по умолчанию — 2 часа.
+    duration_hours = Column(Integer, nullable=False, default=2)
+
 
 class SignUp(Base):
     """Association table linking users to schedule items they signed up for."""
@@ -100,7 +103,8 @@ class SignUp(Base):
     __tablename__ = "signups"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # user_id is optional when registration is anonymous
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     schedule_item_id = Column(Integer, ForeignKey("schedule.id"), nullable=False)
 
     user = relationship("User", back_populates="signups")

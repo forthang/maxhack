@@ -51,20 +51,22 @@ def get_schedule(db: Session, user_id: Optional[int] = None) -> List[schemas.Sch
     return results
 
 
-def signup_for_schedule(db: Session, user_id: int, schedule_id: int) -> bool:
-    """Register a user for a schedule item if not already signed up.
+def signup_for_schedule(db: Session, schedule_id: int, user_id: Optional[int] = None) -> bool:
+    """Register for a schedule item.
 
-    Returns True if a new sign‑up was created and False if the user was
-    already registered.
+    If ``user_id`` is provided the function ensures the user is not already
+    registered. If ``user_id`` is ``None`` a sign‑up is recorded anonymously.
+    Returns True if a new sign‑up was created; always True for anonymous
+    sign‑ups.
     """
-    # Check existing sign‑up
-    existing = (
-        db.query(models.SignUp)
-        .filter(models.SignUp.user_id == user_id, models.SignUp.schedule_item_id == schedule_id)
-        .first()
-    )
-    if existing:
-        return False
+    if user_id is not None:
+        existing = (
+            db.query(models.SignUp)
+            .filter(models.SignUp.user_id == user_id, models.SignUp.schedule_item_id == schedule_id)
+            .first()
+        )
+        if existing:
+            return False
     signup = models.SignUp(user_id=user_id, schedule_item_id=schedule_id)
     db.add(signup)
     db.commit()
@@ -80,9 +82,38 @@ def get_events(db: Session) -> List[schemas.EventOut]:
             event_time=event.event_time,
             title=event.title,
             description=event.description,
+            duration_hours=event.duration_hours,
         )
         for event in events
     ]
+
+
+def create_event(db: Session, payload: schemas.EventBase) -> schemas.EventOut:
+    """Create a new event and return it.
+
+    Args:
+        db: Active database session.
+        payload: Pydantic model containing event_time, title and description.
+
+    Returns:
+        The created EventOut schema.
+    """
+    event = models.Event(
+        event_time=payload.event_time,
+        title=payload.title,
+        description=payload.description,
+        duration_hours=payload.duration_hours,
+    )
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return schemas.EventOut(
+        id=event.id,
+        event_time=event.event_time,
+        title=event.title,
+        description=event.description,
+        duration_hours=event.duration_hours,
+    )
 
 
 def get_leaderboard(db: Session) -> List[schemas.LeaderboardEntry]:

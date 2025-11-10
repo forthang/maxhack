@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Panel, Flex, Typography, Container } from '@maxhub/max-ui';
 
 interface EventItem {
   id: number;
@@ -32,24 +31,27 @@ const Events: React.FC = () => {
   }, []);
 
   return (
-    <Panel mode="secondary" className="events-panel">
-      <Typography.Title style={{ padding: '8px 16px' }}>События</Typography.Title>
+    <div className="p-4">
+      <h2 className="text-2xl font-semibold mb-4">События</h2>
       {loading ? (
-        <Typography.Text style={{ padding: '16px' }}>Загрузка...</Typography.Text>
+        <p>Загрузка...</p>
       ) : (
-        <Flex direction="column" gap={8} style={{ padding: '0 8px 80px 8px' }}>
+        <div className="space-y-4 pb-20">
           {events.map((e) => (
-            <Container key={e.id} style={{ border: '1px solid #eee', borderRadius: '8px', padding: '8px' }}>
-              <Typography.Subtitle>
+            <div
+              key={e.id}
+              className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 border border-gray-100 dark:border-gray-700"
+            >
+              <p className="font-medium text-gray-700 dark:text-gray-200">
                 {new Date(e.event_time).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}
-              </Typography.Subtitle>
-              <Typography.Text strong>{e.title}</Typography.Text>
-              <Typography.Text>{e.description}</Typography.Text>
-            </Container>
+              </p>
+              <p className="mt-1 font-semibold text-gray-800 dark:text-gray-300">{e.title}</p>
+              <p className="mt-1 text-gray-700 dark:text-gray-400">{e.description}</p>
+            </div>
           ))}
-        </Flex>
+        </div>
       )}
-    </Panel>
+    </div>
   );
 };
 
