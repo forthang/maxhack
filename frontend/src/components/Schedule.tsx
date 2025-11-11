@@ -33,6 +33,9 @@ interface UnifiedItem {
   type: 'class' | 'event';
   signup_count?: number;
   signed_up?: boolean;
+  // Исходный идентификатор из API. Для событий это id события,
+  // для расписания — id занятия. Используется для навигации на страницу подробностей.
+  sourceId: number;
 }
 
 /**
@@ -54,6 +57,7 @@ const Schedule: React.FC = () => {
   const [newEventDesc, setNewEventDesc] = useState('');
   const [newEventDate, setNewEventDate] = useState<string>('');
   const [newEventDuration, setNewEventDuration] = useState<number>(2);
+  const [newEventMaterials, setNewEventMaterials] = useState<string>('');
 
   // Текущий режим отображения: 'schedule' (сеткой), 'events' (список всех
   // мероприятий), 'my-events' (записанные занятия). По умолчанию — schedule.
@@ -65,6 +69,19 @@ const Schedule: React.FC = () => {
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('signedUpIds');
+        return stored ? JSON.parse(stored) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  // Идентификаторы событий, созданных текущим пользователем
+  const [createdEventIds, setCreatedEventIds] = useState<number[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('createdEventIds');
         return stored ? JSON.parse(stored) : [];
       } catch {
         return [];
@@ -91,7 +108,7 @@ const Schedule: React.FC = () => {
       if (scheduleResp.ok) {
         const scheduleData: ScheduleItem[] = await scheduleResp.json();
         scheduleData.forEach((item) => {
-          unified.push({
+        unified.push({
             id: item.id,
             start: new Date(item.start_time),
             end: new Date(item.end_time),
@@ -101,23 +118,25 @@ const Schedule: React.FC = () => {
             signup_count: item.signup_count,
             // Определяем подписку локально: бэкенд всегда возвращает false
             signed_up: signedUpIds.includes(item.id),
-          });
+            sourceId: item.id,
+        });
         });
       }
       if (eventsResp.ok) {
         const eventsData: any[] = await eventsResp.json();
         eventsData.forEach((ev) => {
-          const start = new Date(ev.event_time);
-          const duration = ev.duration_hours ?? 2;
-          const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
-          unified.push({
+        const start = new Date(ev.event_time);
+        const duration = ev.duration_hours ?? 2;
+        const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
+        unified.push({
             id: ev.id + 10000,
             start,
             end,
             title: ev.title,
             description: ev.description,
             type: 'event',
-          });
+            sourceId: ev.id,
+        });
         });
       }
       setItems(unified);
@@ -334,7 +353,14 @@ const Schedule: React.FC = () => {
                     backgroundColor: item.type === 'event' ? 'rgba(99, 102, 241, 0.9)' : 'rgba(16, 185, 129, 0.9)',
                     color: 'white',
                   }}
-                  onClick={() => navigate(`/event/${item.id}`)}
+                  onClick={() => {
+                    // Для событий переходим на страницу события. Для занятий
+                    // пока подробная страница не реализована, поэтому
+                    // клики игнорируем.
+                    if (item.type === 'event') {
+                      navigate(`/event/${item.sourceId}`);
+                    }
+                  }}
                 >
                   <div className="flex-1">
                     <div className="font-semibold truncate">{item.title}</div>
@@ -392,7 +418,7 @@ const Schedule: React.FC = () => {
                       </button>
                     )}
                     <button
-                      onClick={() => navigate(`/event/${item.id}`)}
+                      onClick={() => navigate(`/event/${item.sourceId}`)}
                       className="text-blue-600 dark:text-blue-400 text-sm underline"
                     >
                       Подробнее
@@ -447,6 +473,14 @@ const Schedule: React.FC = () => {
                   onChange={(e) => setNewEventDesc(e.target.value)}
                 ></textarea>
               </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Материалы (ссылка)</label>
+            <input
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+              value={newEventMaterials}
+              onChange={(e) => setNewEventMaterials(e.target.value)}
+            />
+          </div>
               <button
                 className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-4 py-2 rounded-md transition-colors"
                 onClick={async () => {
@@ -455,16 +489,33 @@ const Schedule: React.FC = () => {
                     const resp = await fetch('/api/events', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        event_time: new Date(newEventDate).toISOString(),
+                    body: JSON.stringify({
+                        // Передаём дату и время без преобразования в UTC, чтобы
+                        // сохранить локальное время пользователя. Бэкенд
+                        // интерпретирует эту строку как локальное время при
+                        // сохранении.
+                        event_time: newEventDate,
                         title: newEventTitle,
                         description: newEventDesc,
                         duration_hours: newEventDuration,
+                        materials: newEventMaterials || null,
                       }),
                     });
                     if (resp.ok) {
+                      const created = await resp.json();
+                      // Сохраняем ID созданного события, чтобы отображать его в "My events"
+                      if (created && created.id !== undefined) {
+                        const updated = [...createdEventIds, created.id];
+                        setCreatedEventIds(updated);
+                        try {
+                          localStorage.setItem('createdEventIds', JSON.stringify(updated));
+                        } catch {
+                          /* ignore */
+                        }
+                      }
                       setNewEventTitle('');
                       setNewEventDesc('');
+                      setNewEventMaterials('');
                       setNewEventDate('');
                       setNewEventDuration(2);
                       setShowCreateForm(false);
@@ -480,11 +531,20 @@ const Schedule: React.FC = () => {
             </div>
           )}
           {items
-            .filter((item) => item.type === 'class' && signedUpIds.includes(item.id))
+            .filter(
+              (item) =>
+                (item.type === 'class' && signedUpIds.includes(item.id)) ||
+                (item.type === 'event' && createdEventIds.includes(item.sourceId))
+            )
             .map((item) => (
               <div
                 key={item.id}
-                className="fade-in bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm"
+                className="fade-in bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm cursor-pointer"
+                onClick={() => {
+                  if (item.type === 'event') {
+                    navigate(`/event/${item.sourceId}`);
+                  }
+                }}
               >
                 <p className="font-medium text-gray-700 dark:text-gray-200">
                   {item.start.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -493,10 +553,15 @@ const Schedule: React.FC = () => {
                 </p>
                 <p className="mt-1 text-gray-800 dark:text-gray-300">{item.title}</p>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{item.description}</p>
+                {item.type === 'event' && <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 underline">Подробнее</p>}
               </div>
             ))}
-          {items.filter((item) => item.type === 'class' && signedUpIds.includes(item.id)).length === 0 && (
-            <p className="text-gray-600 dark:text-gray-400">Вы ещё не записались ни на одно занятие.</p>
+          {items.filter(
+            (item) =>
+              (item.type === 'class' && signedUpIds.includes(item.id)) ||
+              (item.type === 'event' && createdEventIds.includes(item.sourceId))
+          ).length === 0 && (
+            <p className="text-gray-600 dark:text-gray-400">Вы ещё не подписались и не создали ни одного события.</p>
           )}
         </div>
       )}

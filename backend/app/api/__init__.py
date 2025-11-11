@@ -10,3 +10,5 @@ easier to navigate.
 from .schedule import router as schedule_router  # noqa: F401
 from .events import router as events_router  # noqa: F401
 from .leaderboard import router as leaderboard_router  # noqa: F401
+from .university import router as university_router  # noqa: F401
+from .profile import router as profile_router  # noqa: F401

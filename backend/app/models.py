@@ -39,6 +39,9 @@ class User(Base):
 
     The system intentionally stores only minimal personal information because
     authentication is handled through invitation links rather than accounts.
+    In this version the user also accumulates experience points and coins
+    for completing courses and participating in events. Additional lookup
+    tables record completed courses, purchased items and event signups.
     """
 
     __tablename__ = "users"
@@ -50,8 +53,17 @@ class User(Base):
     achievements = Column(String, nullable=True)  # comma‑separated achievements
     progress = Column(Integer, default=0)  # percentage progress for simplicity
 
+    # Additional gamified metrics. Experience points (xp) are awarded for
+    # completing courses, and coins are earned through events or purchases.
+    xp = Column(Integer, default=0)
+    coins = Column(Integer, default=0)
+
     university = relationship("University", back_populates="users")
     signups = relationship("SignUp", back_populates="user")
+    # New relationships for extended functionality
+    completed_courses = relationship("CompletedCourse", back_populates="user")
+    purchases = relationship("PurchasedItem", back_populates="user")
+    event_signups = relationship("EventSignup", back_populates="user")
 
 
 class University(Base):
@@ -83,7 +95,9 @@ class Event(Base):
     """Extracurricular event in the university.
 
     Events differ from schedule items by not requiring a sign‑up; they are
-    informational and open to all users.
+    informational and open to all users. When a user creates a custom event
+    through the UI it is stored here with a reference to the creator. The
+    events table also stores optional materials and duration.
     """
 
     __tablename__ = "events"
@@ -93,8 +107,15 @@ class Event(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
 
-    # Длительность события в часах. Значение по умолчанию — 2 часа.
+    # Duration of the event in hours. Defaults to two hours.
     duration_hours = Column(Integer, nullable=False, default=2)
+
+    # Optional link or description of materials associated with the event.
+    materials = Column(String, nullable=True)
+
+    # Note: We previously stored the creator ID here. To simplify the
+    # schema and avoid migrations, this column has been removed. Events
+    # created by users will not reference their creator in this version.
 
 
 class SignUp(Base):
@@ -109,3 +130,54 @@ class SignUp(Base):
 
     user = relationship("User", back_populates="signups")
     schedule_item = relationship("ScheduleItem", back_populates="signups")
+
+
+class EventSignup(Base):
+    """Association table linking users to events they have signed up for.
+
+    Unlike schedule sign‑ups, event sign‑ups always reference a user. The
+    event itself is referenced via a foreign key on the events table. Each
+    row represents one user attending one event.
+    """
+
+    __tablename__ = "event_signups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+
+    user = relationship("User", back_populates="event_signups")
+    event = relationship("Event")
+
+
+class CompletedCourse(Base):
+    """Record of a completed course for a user.
+
+    Each entry corresponds to a single course identifier that has been
+    completed by a user. Course identifiers are arbitrary strings defined
+    on the frontend, allowing the graph of courses to be versioned.
+    """
+
+    __tablename__ = "completed_courses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    course_id = Column(String, nullable=False)
+
+    user = relationship("User", back_populates="completed_courses")
+
+
+class PurchasedItem(Base):
+    """Item purchased in the store by a user.
+
+    Items themselves are defined on the frontend; this table records each
+    transaction so that users cannot repurchase an item unless allowed.
+    """
+
+    __tablename__ = "purchases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    item_id = Column(String, nullable=False)
+
+    user = relationship("User", back_populates="purchases")

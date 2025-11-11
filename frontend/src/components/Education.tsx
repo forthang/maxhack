@@ -55,13 +55,163 @@ const tracks: Track[] = [
   },
 ];
 
+import CourseGraph, { CourseNode } from './CourseGraph';
+
 const Education: React.FC = () => {
-  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
+  const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
   const [completed, setCompleted] = useState<{ [key: string]: boolean }>({});
   const [xp, setXp] = useState<number>(0);
   const [coins, setCoins] = useState<number>(0);
 
-  // Загружаем прогресс из localStorage
+  // Дорожные карты для каждого направления. В реальном приложении эти данные
+  // могут поступать с сервера или редактироваться администраторами. Здесь
+  // представлен пример для программистов и других специальностей.
+  const courseTrees: { [key: string]: CourseNode } = {
+    'Программист': {
+      id: 'prog-root',
+      title: 'Программист',
+      info: 'Постройте свою карьеру программиста, проходя курсы от алгоритмов до фреймворков.',
+      xp: 0,
+      coins: 0,
+      children: [
+        {
+          id: 'algorithms',
+          title: 'Алгоритмы',
+          info: 'Изучите базовые алгоритмы и структуры данных для эффективного решения задач.',
+          xp: 50,
+          coins: 10,
+          children: [
+            {
+              id: 'datastructures',
+              title: 'Структуры данных',
+              info: 'Списки, стеки, очереди, деревья и графы – основные инструменты для программиста.',
+              xp: 50,
+              coins: 10,
+            },
+          ],
+        },
+        {
+          id: 'languages',
+          title: 'Языки программирования',
+          info: 'Выберите язык и освоите его особенности.',
+          xp: 0,
+          coins: 0,
+          children: [
+            {
+              id: 'js',
+              title: 'JavaScript',
+              info: 'Изучите синтаксис JavaScript и основы работы с DOM.',
+              xp: 40,
+              coins: 8,
+              children: [
+                {
+                  id: 'js-bootcamp-1',
+                  title: 'JS Bootcamp I',
+                  info: 'Практический курс по основам JavaScript.',
+                  xp: 60,
+                  coins: 12,
+                },
+                {
+                  id: 'js-bootcamp-2',
+                  title: 'JS Bootcamp II',
+                  info: 'Продвинутые темы: асинхронность, тестирование, фронтенд‑фреймворки.',
+                  xp: 70,
+                  coins: 15,
+                },
+              ],
+            },
+            {
+              id: 'python',
+              title: 'Python',
+              info: 'Изучите язык Python и его применение в анализе данных и веб‑разработке.',
+              xp: 40,
+              coins: 8,
+              children: [
+                {
+                  id: 'python-bootcamp',
+                  title: 'Python Bootcamp',
+                  info: 'Базовые и продвинутые возможности Python, включая библиотеки.',
+                  xp: 70,
+                  coins: 15,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    'Лингвист': {
+      id: 'ling-root',
+      title: 'Лингвист',
+      info: 'Освойте языковедение, грамматику и современную лингвистику.',
+      xp: 0,
+      coins: 0,
+      children: [
+        {
+          id: 'phonetics',
+          title: 'Фонетика',
+          info: 'Звуковая сторона языка: артикуляция, акустика и восприятие.',
+          xp: 40,
+          coins: 8,
+        },
+        {
+          id: 'syntax',
+          title: 'Синтаксис',
+          info: 'Законы построения предложений и словосочетаний.',
+          xp: 50,
+          coins: 10,
+        },
+      ],
+    },
+    'Слесарь': {
+      id: 'locksmith-root',
+      title: 'Слесарь',
+      info: 'Получите практические навыки работы с металлом и инструментами.',
+      xp: 0,
+      coins: 0,
+      children: [
+        {
+          id: 'materials',
+          title: 'Материаловедение',
+          info: 'Свойства и обработка материалов.',
+          xp: 30,
+          coins: 5,
+        },
+        {
+          id: 'tools',
+          title: 'Инструменты',
+          info: 'Основные инструменты и методы их использования.',
+          xp: 40,
+          coins: 8,
+        },
+      ],
+    },
+    'Искусственный интеллект': {
+      id: 'ai-root',
+      title: 'Искусственный интеллект',
+      info: 'Погрузитесь в машинное обучение, нейронные сети и этику ИИ.',
+      xp: 0,
+      coins: 0,
+      children: [
+        {
+          id: 'ml',
+          title: 'Машинное обучение',
+          info: 'Основы машинного обучения и алгоритмы.',
+          xp: 80,
+          coins: 20,
+        },
+        {
+          id: 'nn',
+          title: 'Нейронные сети',
+          info: 'Глубокие нейронные сети и современные архитектуры.',
+          xp: 90,
+          coins: 25,
+        },
+      ],
+    },
+  };
+
+  // Загрузка прогресса из localStorage
   useEffect(() => {
     const storedXp = localStorage.getItem('userXp');
     const storedCoins = localStorage.getItem('userCoins');
@@ -71,7 +221,7 @@ const Education: React.FC = () => {
     if (storedCompleted) setCompleted(JSON.parse(storedCompleted));
   }, []);
 
-  // Сохраняем прогресс при изменениях
+  // Сохранение прогресса
   useEffect(() => {
     try {
       localStorage.setItem('userXp', xp.toString());
@@ -82,13 +232,15 @@ const Education: React.FC = () => {
     }
   }, [xp, coins, completed]);
 
-  const handleComplete = (trackName: string, course: Course) => {
-    const key = `${trackName}-${course.title}`;
-    if (completed[key]) return;
-    setCompleted((prev) => ({ ...prev, [key]: true }));
-    setXp((prev) => prev + course.xp);
-    setCoins((prev) => prev + course.coins);
-    alert(`Курс «${course.title}» завершён! Вы получили ${course.xp} XP и ${course.coins} монет.`);
+  // Завершение курса: отмечаем как завершённый и начисляем награды
+  const handleComplete = (node: CourseNode) => {
+    if (completed[node.id]) return;
+    setCompleted((prev) => ({ ...prev, [node.id]: true }));
+    setXp((prev) => prev + node.xp);
+    setCoins((prev) => prev + node.coins);
+    if (node.xp > 0 || node.coins > 0) {
+      alert(`Поздравляем! Вы завершили «${node.title}» и получили ${node.xp} XP и ${node.coins} монет.`);
+    }
   };
 
   return (
@@ -97,52 +249,29 @@ const Education: React.FC = () => {
       {!selectedTrack ? (
         <div className="space-y-3">
           <p className="mb-2 text-gray-700 dark:text-gray-300">Выберите направление обучения:</p>
-          {tracks.map((track) => (
+          {Object.keys(courseTrees).map((trackName) => (
             <button
-              key={track.name}
-              onClick={() => setSelectedTrack(track)}
+              key={trackName}
+              onClick={() => setSelectedTrack(trackName)}
               className="block w-full text-left bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 shadow-sm hover:shadow-md transition-all fade-in"
             >
-              <span className="font-medium text-gray-900 dark:text-gray-100">{track.name}</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">{trackName}</span>
             </button>
           ))}
         </div>
       ) : (
-        <div className="space-y-4 fade-in">
+        <div className="fade-in">
           <button
             onClick={() => setSelectedTrack(null)}
             className="mb-2 text-blue-600 dark:text-blue-400 hover:underline"
           >
             ← Назад к направлениям
           </button>
-          <h3 className="text-xl font-semibold mb-2">{selectedTrack.name}</h3>
-          {selectedTrack.courses.map((course) => {
-            const key = `${selectedTrack.name}-${course.title}`;
-            const done = completed[key];
-            return (
-              <div
-                key={key}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm flex items-center justify-between"
-              >
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{course.title}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Награда: {course.xp} XP, {course.coins} монет
-                  </p>
-                </div>
-                {done ? (
-                  <span className="text-green-600 dark:text-green-400 font-medium">Завершено</span>
-                ) : (
-                  <button
-                    onClick={() => handleComplete(selectedTrack.name, course)}
-                    className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm"
-                  >
-                    Завершить
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          <CourseGraph
+            root={courseTrees[selectedTrack]}
+            completed={completed}
+            onComplete={handleComplete}
+          />
         </div>
       )}
     </div>

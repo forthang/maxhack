@@ -58,6 +58,14 @@ def init_db() -> None:
         conn.execute(text(
             "ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS duration_hours INTEGER DEFAULT 2"
         ))
+        # Allow anonymous sign‑ups by dropping NOT NULL constraint on signups.user_id.
+        conn.execute(text(
+            "ALTER TABLE IF EXISTS signups ALTER COLUMN user_id DROP NOT NULL"
+        ))
+        # Add materials column for events if it doesn't exist.
+        conn.execute(text(
+            "ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS materials VARCHAR"
+        ))
         conn.commit()
 
     # Seed the database with sample data only if the tables are empty. To avoid
@@ -71,7 +79,15 @@ def init_db() -> None:
             uni1 = models.University(name="Московский Политех", points=150)
             uni2 = models.University(name="Технопарк МГТУ", points=120)
             uni3 = models.University(name="СПбГУ", points=90)
-            db.add_all([uni1, uni2, uni3])
+            # Добавляем дополнительные университеты для более насыщенного лидерборда
+            uni4 = models.University(name="МГУ", points=180)
+            uni5 = models.University(name="ВШЭ", points=140)
+            uni6 = models.University(name="МФТИ", points=130)
+            uni7 = models.University(name="НИУ ИТМО", points=110)
+            uni8 = models.University(name="Новосибирский ГУ", points=100)
+            uni9 = models.University(name="ТГУ", points=95)
+            uni10 = models.University(name="ДВФУ", points=85)
+            db.add_all([uni1, uni2, uni3, uni4, uni5, uni6, uni7, uni8, uni9, uni10])
 
         # Schedule items
         schedule_count = db.execute(text("SELECT COUNT(*) FROM schedule")).scalar()
@@ -99,12 +115,14 @@ def init_db() -> None:
                 title="Хакатон",
                 description="Участвуйте в командном хакатоне и выиграйте призы!",
                 duration_hours=2,
+                materials="https://example.com/hackathon-info",
             )
             event2 = models.Event(
                 event_time=datetime.utcnow() + timedelta(days=3),
                 title="Семинар по карьере",
                 description="Поговорим о карьерных возможностях для студентов.",
                 duration_hours=2,
+                materials="https://example.com/career-seminar",
             )
             db.add_all([event1, event2])
 

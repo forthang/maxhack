@@ -16,7 +16,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import init_db
-from .api import schedule_router, events_router, leaderboard_router
+from .api import (
+    schedule_router,
+    events_router,
+    leaderboard_router,
+    university_router,
+    profile_router,
+)
 
 
 # Initialize the FastAPI app
@@ -52,6 +58,8 @@ def on_startup() -> None:
 app.include_router(schedule_router)
 app.include_router(events_router)
 app.include_router(leaderboard_router)
+app.include_router(university_router)
+app.include_router(profile_router)
 
 
 @app.get("/", tags=["root"])

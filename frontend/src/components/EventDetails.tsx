@@ -7,6 +7,10 @@ interface EventData {
   date: string;
   time: string;
   type: 'class' | 'event';
+  materials?: string | null;
+  signup_count?: number;
+  signed_up?: boolean;
+  id?: number;
 }
 
 /**
@@ -26,40 +30,42 @@ const EventDetails: React.FC = () => {
       if (!id) return;
       const numericId = Number(id);
       try {
-        if (numericId >= 10000) {
-          // Это событие
-          const eventId = numericId - 10000;
-          const resp = await fetch('/api/events');
-          if (resp.ok) {
-            const data = await resp.json();
-            const ev = data.find((e: any) => e.id === eventId);
-            if (ev) {
-              const start = new Date(ev.event_time);
-              setEventData({
-                title: ev.title,
-                description: ev.description,
-                date: start.toLocaleDateString('ru-RU', { dateStyle: 'long' }),
-                time: start.toLocaleTimeString('ru-RU', { timeStyle: 'short' }),
-                type: 'event',
-              });
-            }
+        // Try to find in events first
+        const evResp = await fetch('/api/events?user_id=1');
+        if (evResp.ok) {
+          const events = await evResp.json();
+          const ev = events.find((e: any) => e.id === numericId);
+          if (ev) {
+            const start = new Date(ev.event_time);
+            setEventData({
+              id: ev.id,
+              title: ev.title,
+              description: ev.description,
+              date: start.toLocaleDateString('ru-RU', { dateStyle: 'long' }),
+              time: start.toLocaleTimeString('ru-RU', { timeStyle: 'short' }),
+              type: 'event',
+              materials: ev.materials ?? null,
+              signup_count: ev.signup_count,
+              signed_up: ev.signed_up,
+            });
+            return;
           }
-        } else {
-          // Это учебное занятие
-          const resp = await fetch('/api/schedule');
-          if (resp.ok) {
-            const data = await resp.json();
-            const item = data.find((i: any) => i.id === numericId);
-            if (item) {
-              const start = new Date(item.start_time);
-              setEventData({
-                title: item.description,
-                description: item.description,
-                date: start.toLocaleDateString('ru-RU', { dateStyle: 'long' }),
-                time: `${start.toLocaleTimeString('ru-RU', { timeStyle: 'short' })} — ${new Date(item.end_time).toLocaleTimeString('ru-RU', { timeStyle: 'short' })}`,
-                type: 'class',
-              });
-            }
+        }
+        // If not found, try schedule
+        const schResp = await fetch('/api/schedule');
+        if (schResp.ok) {
+          const items = await schResp.json();
+          const item = items.find((i: any) => i.id === numericId);
+          if (item) {
+            const start = new Date(item.start_time);
+            setEventData({
+              title: item.description,
+              description: item.description,
+              date: start.toLocaleDateString('ru-RU', { dateStyle: 'long' }),
+              time: `${start.toLocaleTimeString('ru-RU', { timeStyle: 'short' })} — ${new Date(item.end_time).toLocaleTimeString('ru-RU', { timeStyle: 'short' })}`,
+              type: 'class',
+            });
+            return;
           }
         }
       } catch (e) {
@@ -93,14 +99,51 @@ const EventDetails: React.FC = () => {
       <p className="text-gray-700 dark:text-gray-300 mb-2"><strong>Дата:</strong> {eventData.date}</p>
       <p className="text-gray-700 dark:text-gray-300 mb-4"><strong>Время:</strong> {eventData.time}</p>
       <p className="text-gray-800 dark:text-gray-200 mb-6">{eventData.description}</p>
-      <a
-        href="https://www.example.com/materials"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-block bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors"
-      >
-        Дополнительные материалы
-      </a>
+      {eventData.materials && (
+        <a
+          href={eventData.materials}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors"
+        >
+          Дополнительные материалы
+        </a>
+      )}
+      {/* Кнопки записи/отписки для событий */}
+      {eventData.type === 'event' && eventData.id !== undefined && (
+        <div className="mt-4">
+          {!eventData.signed_up ? (
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+              onClick={async () => {
+                const resp = await fetch(`/api/events/${eventData.id}/signup`, { method: 'POST' });
+                if (resp.ok) {
+                  // reload event data to update sign up state
+                  setLoading(true);
+                  setEventData(null);
+                  navigate(0);
+                }
+              }}
+            >
+              Записаться
+            </button>
+          ) : (
+            <button
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+              onClick={async () => {
+                const resp = await fetch(`/api/events/${eventData.id}/unsubscribe`, { method: 'POST' });
+                if (resp.ok) {
+                  setLoading(true);
+                  setEventData(null);
+                  navigate(0);
+                }
+              }}
+            >
+              Отписаться
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
