@@ -11,6 +11,7 @@ interface EventItem {
   materials?: string | null;
   signup_count?: number;
   signed_up?: boolean;
+  auditorium?: string | null;
 }
 
 const Events: React.FC = () => {
@@ -57,6 +58,7 @@ const Events: React.FC = () => {
                   end={end}
                   title={e.title}
                   description={e.description}
+                auditorium={e.auditorium ?? undefined}
                   onDetails={() => navigate(`/event/${e.id}`)}
                   onSignup={!e.signed_up
                     ? async () => {

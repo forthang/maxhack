@@ -54,10 +54,40 @@ class UniversityOut(UniversityBase):
         from_attributes = True
 
 
+class UniversityStudentOut(BaseModel):
+    """A minimal representation of a student belonging to a university.
+
+    This schema exposes only the fields relevant for leaderboard display: the
+    student's identifier, name and accumulated experience points (xp) and
+    coins. Other personal details are intentionally omitted.
+    """
+    id: int
+    name: str
+    xp: int
+    coins: int
+
+    class Config:
+        from_attributes = True
+
+
+class UniversityDetailOut(UniversityBase):
+    """Extended university schema including its students.
+
+    In addition to the basic university fields, this schema lists all
+    students assigned to the university along with their gamified metrics.
+    """
+    id: int
+    students: list[UniversityStudentOut] = []
+
+    class Config:
+        from_attributes = True
+
+
 class ScheduleItemBase(BaseModel):
     start_time: datetime
     end_time: datetime
     description: str
+    auditorium: Optional[str] = Field(default=None, description="Аудитория, где проходит занятие")
 
 
 class ScheduleItemOut(ScheduleItemBase):
@@ -78,6 +108,20 @@ class EventBase(BaseModel):
         default=None,
         description="Дополнительные материалы или ссылка на ресурсы события",
     )
+    auditorium: Optional[str] = Field(
+        default=None,
+        description="Аудитория или место проведения события",
+    )
+
+
+class EventUpdate(BaseModel):
+    """Schema for updating an event. All fields are optional."""
+    event_time: Optional[datetime] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    duration_hours: Optional[int] = Field(default=None, ge=1, le=12)
+    materials: Optional[str] = None
+    auditorium: Optional[str] = None
 
 
 class EventOut(EventBase):

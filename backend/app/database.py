@@ -66,6 +66,13 @@ def init_db() -> None:
         conn.execute(text(
             "ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS materials VARCHAR"
         ))
+        # Add auditorium column to events and schedule if they do not exist
+        conn.execute(text(
+            "ALTER TABLE IF EXISTS events ADD COLUMN IF NOT EXISTS auditorium VARCHAR"
+        ))
+        conn.execute(text(
+            "ALTER TABLE IF EXISTS schedule ADD COLUMN IF NOT EXISTS auditorium VARCHAR"
+        ))
         conn.commit()
 
     # Seed the database with sample data only if the tables are empty. To avoid
@@ -107,33 +114,62 @@ def init_db() -> None:
         iso_offset = now.isoweekday() - 1
         monday = (now - timedelta(days=iso_offset)).replace(hour=0, minute=0, second=0, microsecond=0)
 
-        # Seed schedule items: one for each day of the week with a fixed
-        # two‑hour duration. Titles describe typical university activities.
-        lesson_specs = [
-            (0, 10, "Лекция: линейная алгебра"),
-            (1, 9, "Практика: программирование"),
-            (2, 14, "Семинар: физика"),
-            (3, 11, "Лабораторная: химия"),
-            (4, 15, "Проектная работа"),
-            (5, 10, "Спортивные занятия"),
-            (6, 12, "Кофе с куратором"),
-        ]
+        # Seed schedule items: for each weekday (Mon-Fri) create lectures and seminars
+        # from 9:00 to 16:00. Each item has an auditorium.
         schedule_entries: list[models.ScheduleItem] = []
-        for day_offset, hour, desc in lesson_specs:
+        weekdays = [0, 1, 2, 3, 4]  # Monday to Friday
+        for day_offset in weekdays:
+            # 9:00–11:00 lecture
+            start1 = monday + timedelta(days=day_offset, hours=9)
+            end1 = start1 + timedelta(hours=2)
+            schedule_entries.append(models.ScheduleItem(
+                start_time=start1,
+                end_time=end1,
+                description="Лекция по предмету",
+                auditorium=f"Аудитория {101 + day_offset}"
+            ))
+            # 11:30–13:00 seminar
+            start2 = monday + timedelta(days=day_offset, hours=11, minutes=30)
+            end2 = start2 + timedelta(hours=1, minutes=30)
+            schedule_entries.append(models.ScheduleItem(
+                start_time=start2,
+                end_time=end2,
+                description="Семинар по теме",
+                auditorium=f"Аудитория {201 + day_offset}"
+            ))
+            # 14:00–16:00 lecture
+            start3 = monday + timedelta(days=day_offset, hours=14)
+            end3 = start3 + timedelta(hours=2)
+            schedule_entries.append(models.ScheduleItem(
+                start_time=start3,
+                end_time=end3,
+                description="Лекция по выбору",
+                auditorium=f"Аудитория {301 + day_offset}"
+            ))
+        # Weekend sessions remain as before for fun activities (Saturday, Sunday)
+        for day_offset, hour, desc, room in [
+            (5, 10, "Спортивные занятия", "Спортзал"),
+            (6, 12, "Кофе с куратором", "Кафетерий"),
+        ]:
             start = monday + timedelta(days=day_offset, hours=hour)
             end = start + timedelta(hours=2)
-            schedule_entries.append(models.ScheduleItem(start_time=start, end_time=end, description=desc))
+            schedule_entries.append(models.ScheduleItem(
+                start_time=start,
+                end_time=end,
+                description=desc,
+                auditorium=room
+            ))
         db.add_all(schedule_entries)
 
         # Seed extracurricular events across the week. Each lasts two hours
         # and includes optional materials links.
         event_specs = [
-            (2, 18, "Митап: Data Science", "Современные методы обработки данных", "https://example.com/ds-meetup"),
-            (4, 20, "Кино вечер", "Просмотр классического фильма", "https://example.com/movie-night"),
-            (5, 16, "Волонтёрский субботник", "Помогаем вместе убрать парк", "https://example.com/volunteer"),
+            (2, 18, "Митап: Data Science", "Современные методы обработки данных", "https://example.com/ds-meetup", "Аудитория DS"),
+            (4, 20, "Кино вечер", "Просмотр классического фильма", "https://example.com/movie-night", "Актовый зал"),
+            (5, 16, "Волонтёрский субботник", "Помогаем вместе убрать парк", "https://example.com/volunteer", "Парк"),
         ]
         event_entries: list[models.Event] = []
-        for day_offset, hour, title, desc, mats in event_specs:
+        for day_offset, hour, title, desc, mats, room in event_specs:
             time = monday + timedelta(days=day_offset, hours=hour)
             event_entries.append(
                 models.Event(
@@ -142,6 +178,7 @@ def init_db() -> None:
                     description=desc,
                     duration_hours=2,
                     materials=mats,
+                    auditorium=room,
                 )
             )
         db.add_all(event_entries)
@@ -150,13 +187,55 @@ def init_db() -> None:
         # Ensure there is a default user with ID=1. This user acts as the
         # authenticated principal in the demo application and is granted all
         # privileges. If the user table already contains a row with ID=1,
-        # leave it unchanged; otherwise, insert a teacher to cover both
-        # teacher and student scenarios.
+        # leave it unchanged. The default user is not attached to any
+        # university so that the attachment feature can be tested. XP and
+        # coins are reset to zero on each seed.
         user_exists = db.execute(text("SELECT COUNT(*) FROM users WHERE id=1")).scalar()
         if not user_exists:
             db.execute(text(
-                "INSERT INTO users (id, name, role) VALUES (1, 'Demo User', 'teacher')"
+                "INSERT INTO users (id, name, role, xp, coins, university_id) "
+                "VALUES (1, 'Demo User', 'teacher', 0, 0, NULL)"
             ))
+        else:
+            # Reset XP/coins and clear university for existing user id=1
+            db.execute(text(
+                "UPDATE users SET xp = 0, coins = 0, university_id = NULL WHERE id = 1"
+            ))
+        db.commit()
+
+        # If there are no other users beyond the default user, seed some
+        # sample students across the universities. Each student has a name,
+        # role 'student', belongs to a university and has a random amount of
+        # XP and coins. This populates the leaderboard of each university.
+        existing_students = db.execute(text("SELECT COUNT(*) FROM users WHERE id > 1")).scalar()
+        if not existing_students:
+            # Fetch university IDs in order of creation
+            uni_ids = [row[0] for row in db.execute(text("SELECT id FROM universities ORDER BY id")).fetchall()]
+            import random
+            user_inserts = []
+            # For each university, create 3 students
+            for idx, uni_id in enumerate(uni_ids, start=1):
+                for j in range(3):
+                    name = f"Студент {idx}-{j + 1}"
+                    xp = random.randint(50, 200)
+                    coins = random.randint(20, 100)
+                    user_inserts.append(
+                        {
+                            "name": name,
+                            "role": 'student',
+                            "university_id": uni_id,
+                            "achievements": None,
+                            "progress": 0,
+                            "xp": xp,
+                            "coins": coins,
+                        }
+                    )
+            # Bulk insert students. Build SQL to avoid SQLAlchemy overhead.
+            for u in user_inserts:
+                db.execute(text(
+                    "INSERT INTO users (name, role, university_id, achievements, progress, xp, coins) "
+                    "VALUES (:name, :role, :university_id, :achievements, :progress, :xp, :coins)"
+                ), u)
             db.commit()
     finally:
         db.close()

@@ -35,6 +35,11 @@ interface EventCardProps {
    * for future use.
    */
   isCreated?: boolean;
+  /**
+   * Optional location or auditorium for the event. If provided, it will
+   * be displayed beneath the description.
+   */
+  auditorium?: string;
 }
 
 const EventCard: React.FC<EventCardProps> = ({
@@ -42,6 +47,7 @@ const EventCard: React.FC<EventCardProps> = ({
   end,
   title,
   description,
+  auditorium,
   onDetails,
   onSignup,
   onUnsubscribe,
@@ -56,6 +62,9 @@ const EventCard: React.FC<EventCardProps> = ({
       </p>
       <p className="mt-1 font-semibold text-gray-800 dark:text-gray-300">{title}</p>
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{description}</p>
+      {auditorium && (
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Аудитория: {auditorium}</p>
+      )}
       <div className="mt-2 flex space-x-2 items-center">
         {onDetails && (
           <button

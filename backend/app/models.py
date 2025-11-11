@@ -88,6 +88,9 @@ class ScheduleItem(Base):
     end_time = Column(DateTime(timezone=True), nullable=False)
     description = Column(String, nullable=False)
 
+    # Optional auditorium or classroom where the lesson takes place.
+    auditorium = Column(String, nullable=True)
+
     signups = relationship("SignUp", back_populates="schedule_item")
 
 
@@ -112,6 +115,9 @@ class Event(Base):
 
     # Optional link or description of materials associated with the event.
     materials = Column(String, nullable=True)
+
+    # Optional auditorium or location of the event.
+    auditorium = Column(String, nullable=True)
 
     # Note: We previously stored the creator ID here. To simplify the
     # schema and avoid migrations, this column has been removed. Events

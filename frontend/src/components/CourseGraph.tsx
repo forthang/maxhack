@@ -44,60 +44,91 @@ const CourseGraph: React.FC<CourseGraphProps> = ({ root, completed, onComplete }
   const [selected, setSelected] = useState<CourseNode | null>(null);
 
   /**
-   * Простая раскладка узлов для React Flow. Каждому узлу присваиваются
-   * координаты на основе глубины (основная ось X) и текущего счётчика
-   * (ось Y). Это гарантирует, что все узлы будут видимыми. Уровни
-   * располагаются по горизонтали, а последовательность – по вертикали.
+   * Tidy tree layout.
+
+   * Calculates x/y positions for each course node so that the tree is
+   * centered and symmetrical. Leaves are spaced evenly horizontally.
+   * Returns a list of node positions and total number of leaves in the
+   * current subtree. Positions are relative; they will be shifted later so
+   * that the minimum x coordinate is zero.
    */
-  const flattenLayout = (
+  const computePositions = (
     node: CourseNode,
     depth: number,
-    state: { yCounter: number },
-    nodesArr: any[],
+    leafIndex: number,
+    positions: Array<{ id: string; x: number; y: number; course: CourseNode }>,
     edgesArr: any[],
-  ): void => {
-    const x = depth * 200;
-    const y = state.yCounter * 120;
-    state.yCounter += 1;
-    const rfNode = {
-      id: node.id,
-      data: { label: node.title, course: node },
-      position: { x, y },
-    };
-    nodesArr.push(rfNode);
-    if (node.children) {
-      node.children.forEach((child) => {
-        edgesArr.push({ id: `${node.id}-${child.id}`, source: node.id, target: child.id });
-        flattenLayout(child, depth + 1, state, nodesArr, edgesArr);
-      });
+  ): { leafCount: number; nextLeafIndex: number } => {
+    // If no children, this is a leaf: assign x based on current leaf index
+    const vSpacing = 160; // vertical distance between levels
+    const hSpacing = 200; // horizontal spacing unit
+    if (!node.children || node.children.length === 0) {
+      const x = leafIndex * hSpacing;
+      const y = depth * vSpacing;
+      positions.push({ id: node.id, x, y, course: node });
+      return { leafCount: 1, nextLeafIndex: leafIndex + 1 };
     }
+    // Internal node: layout children first
+    let startIndex = leafIndex;
+    let childXs: number[] = [];
+    let totalLeaves = 0;
+    node.children.forEach((child) => {
+      edgesArr.push({ id: `${node.id}-${child.id}`, source: node.id, target: child.id });
+      const res = computePositions(child, depth + 1, startIndex, positions, edgesArr);
+      // Find x of child root (the first entry for that child)
+      // It will be added to positions; find position with id=child.id
+      const childPos = positions.find((p) => p.id === child.id);
+      if (childPos) {
+        childXs.push(childPos.x);
+      }
+      startIndex = res.nextLeafIndex;
+      totalLeaves += res.leafCount;
+    });
+    // Compute x coordinate as midpoint of child x positions
+    let x: number;
+    if (childXs.length === 1) {
+      x = childXs[0];
+    } else {
+      const minX = Math.min(...childXs);
+      const maxX = Math.max(...childXs);
+      x = (minX + maxX) / 2;
+    }
+    const y = depth * vSpacing;
+    positions.push({ id: node.id, x, y, course: node });
+    return { leafCount: totalLeaves, nextLeafIndex: startIndex };
   };
 
   useEffect(() => {
-    const nodesArr: any[] = [];
+    const positions: Array<{ id: string; x: number; y: number; course: CourseNode }> = [];
     const edgesArr: any[] = [];
-    const state = { yCounter: 0 };
-    // Построить простую раскладку: глубина определяет X, порядок – Y
-    flattenLayout(root, 0, state, nodesArr, edgesArr);
-    // Применяем стили для завершённых и незавершённых курсов
-    const styled = nodesArr.map((n) => {
-      const course = n.data.course as CourseNode;
+    // Compute tidy tree layout. The helper returns leaf counts but we ignore the result.
+    computePositions(root, 0, 0, positions, edgesArr);
+    // Shift all x positions so that the minimum x is zero. This keeps the
+    // tree within the viewport and centered to the left.
+    const minX = positions.length > 0 ? Math.min(...positions.map((p) => p.x)) : 0;
+    // Build ReactFlow nodes with styling based on completion status. We
+    // include a slight scaling on hover via CSS transition for interactivity.
+    const rfNodes = positions.map((pos) => {
+      const course = pos.course;
       const done = completed[course.id];
       return {
-        ...n,
-        data: { ...n.data, done },
+        id: pos.id,
+        data: { label: course.title, course, done },
+        position: { x: pos.x - minX, y: pos.y },
         style: {
           borderRadius: '8px',
-          padding: '6px 10px',
+          padding: '4px 8px',
           color: '#fff',
           backgroundColor: done ? '#16a34a' : '#2563eb',
           border: '1px solid rgba(0,0,0,0.1)',
           fontSize: '12px',
+          transition: 'transform 0.2s ease',
         },
+        className: 'hover:scale-105',
         draggable: false,
       };
     });
-    setNodes(styled);
+    setNodes(rfNodes);
     setEdges(edgesArr);
   }, [root, completed]);
 

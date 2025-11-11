@@ -34,3 +34,43 @@ def read_university(
     if uni is None:
         raise HTTPException(status_code=404, detail="Университет не найден")
     return uni
+
+
+@router.get("/{university_id}/details", response_model=schemas.UniversityDetailOut)
+def read_university_details(
+    university_id: int = Path(..., description="ID of the university"),
+    db: Session = Depends(get_db),
+) -> schemas.UniversityDetailOut:
+    """Return a university and its students sorted by XP descending.
+
+    This endpoint expands upon the basic university information by including
+    all students enrolled in the university. The list of students is sorted
+    by their accumulated XP in descending order so that the most active
+    students appear first. If the university does not exist, a 404 error
+    is returned.
+    """
+    details = crud.get_university_details(db, university_id)
+    if details is None:
+        raise HTTPException(status_code=404, detail="Университет не найден")
+    return details
+
+
+@router.post("/{university_id}/add_student", status_code=201)
+def add_student(
+    university_id: int = Path(..., description="ID of the university"),
+    user_id: int | None = None,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Add a student (by user ID) to a university.
+
+    This endpoint assigns the specified user to the given university. The
+    authenticated user ID is not used here; instead, the client must
+    provide a `user_id` query parameter in the request. If the assignment
+    is successful, the response contains `{"assigned": True}`. If the
+    user already belongs to a university or either entity does not exist,
+    `{"assigned": False}` is returned.
+    """
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="Не указан user_id")
+    success = crud.add_student_to_university(db, user_id=user_id, university_id=university_id)
+    return {"assigned": success}

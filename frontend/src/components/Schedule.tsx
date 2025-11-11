@@ -41,6 +41,7 @@ interface UnifiedItem {
   // Исходный идентификатор из API. Для событий это id события,
   // для расписания — id занятия. Используется для навигации на страницу подробностей.
   sourceId: number;
+  auditorium?: string;
 }
 
 /**
@@ -141,11 +142,9 @@ const Schedule: React.FC = () => {
             description: item.description,
             type: 'class',
             signup_count: item.signup_count,
-            // Бэкенд теперь возвращает признак signed_up, но для обратной
-            // совместимости используем локальное хранилище. Если бэкенд
-            // отмечает запись подписанной, также считаем её подписанной.
             signed_up: (item as any).signed_up || signedUpIds.includes(item.id),
             sourceId: item.id,
+            auditorium: (item as any).auditorium,
           });
         });
       }
@@ -165,6 +164,7 @@ const Schedule: React.FC = () => {
             signup_count: ev.signup_count,
             signed_up: ev.signed_up,
             sourceId: ev.id,
+            auditorium: (ev as any).auditorium,
           });
         });
       }
@@ -235,16 +235,18 @@ const Schedule: React.FC = () => {
    * Приводим все элементы к позиции в сетке. Выбираем только те, что попадают
    * в текущую неделю. Если элемент выходит за пределы недели, он отбрасывается.
    */
-  // В сетке отображаем только те занятия и мероприятия, на которые
-  // пользователь подписан (classes) или подписан на событие (events). Это
-  // предотвращает отображение всех элементов по умолчанию.
+  // В сетке отображаем все учебные занятия текущей недели и только те
+  // внеучебные события, на которые пользователь подписан либо которые
+  // пользователь создал. Это позволяет видеть полное расписание пар
+  // (лекции и семинары), а события не загромождают таблицу без записи.
   const itemsForGrid = items
     .filter((item) => {
       if (item.type === 'class') {
-        return signedUpIds.includes(item.id);
+        return true;
       }
       if (item.type === 'event') {
-        return (item as any).signed_up;
+        // Показываем событие, если пользователь подписан или оно создано
+        return (item as any).signed_up || createdEventIds.includes(item.sourceId);
       }
       return false;
     })
@@ -395,17 +397,21 @@ const Schedule: React.FC = () => {
                     color: 'white',
                   }}
                   onClick={() => {
-                    // Для событий переходим на страницу события. Для занятий
-                    // пока подробная страница не реализована, поэтому
-                    // клики игнорируем.
+                    // Переходим на страницу детали события или занятия
                     if (item.type === 'event') {
                       navigate(`/event/${item.sourceId}`);
+                    } else {
+                      navigate(`/schedule/${item.sourceId}`);
                     }
                   }}
                 >
                   <div className="flex-1">
                     <div className="font-semibold truncate">{item.title}</div>
                     <div className="text-xs opacity-80 truncate">{item.description}</div>
+                    {/* Аудитория отображается для занятий и событий */}
+                    {(item as any).auditorium && (
+                      <div className="text-[10px] opacity-70 truncate">{(item as any).auditorium}</div>
+                    )}
                   </div>
                   {item.type === 'class' && (
                     <div className="flex items-center justify-between mt-1 text-[10px]">
@@ -414,7 +420,12 @@ const Schedule: React.FC = () => {
                         <span className="text-green-200">✓</span>
                       ) : (
                         <span
-                          className="px-2 py-1 rounded bg-white/20 hover:bg-white/30 transition-colors"
+                          className="px-2 py-1 rounded bg-white/20 hover:bg-white/30 transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            // Предотвращаем всплытие, чтобы не переходить на страницу
+                            e.stopPropagation();
+                            handleSignup(item as any);
+                          }}
                         >
                           Записаться
                         </span>
@@ -439,10 +450,11 @@ const Schedule: React.FC = () => {
                 end={item.end}
                 title={item.title}
                 description={item.description}
+                auditorium={(item as any).auditorium}
                 signedUp={signedUpIds.includes(item.id)}
                 signupCount={item.signup_count}
                 onSignup={() => handleSignup(item as any)}
-                onClick={() => navigate(`/event/${item.sourceId}`)}
+                onClick={() => navigate(`/schedule/${item.sourceId}`)}
               />
             ))}
         </div>
@@ -472,7 +484,8 @@ const Schedule: React.FC = () => {
                     end={item.end}
                     title={item.title}
                     description={item.description}
-                    signedUp={true}
+                auditorium={(item as any).auditorium}
+                signedUp={true}
                     signupCount={item.signup_count}
                     onClick={() => {
                       /* Курсы пока не имеют отдельной страницы, поэтому просто игнорируем */
@@ -488,6 +501,7 @@ const Schedule: React.FC = () => {
                   end={item.end}
                   title={item.title}
                   description={item.description}
+                  auditorium={(item as any).auditorium}
                   onDetails={() => navigate(`/event/${item.sourceId}`)}
                   onUnsubscribe={item.signed_up
                     ? async () => {

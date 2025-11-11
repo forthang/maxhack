@@ -7,7 +7,9 @@ import Education from './components/Education';
 import Profile from './components/Profile';
 import Store from './components/Store';
 import EventDetails from './components/EventDetails';
+import ScheduleItemDetails from './components/ScheduleItemDetails';
 import UniversityDetails from './components/UniversityDetails';
+import CourseDetails from './components/CourseDetails';
 
 // Create a theme context so that nested components (e.g. Profile) can
 // toggle dark/light mode. The default implementation does nothing.
@@ -33,7 +35,9 @@ const App: React.FC = () => {
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/profile" element={<Profile />} />
           <Route path="/event/:id" element={<EventDetails />} />
+          <Route path="/schedule/:id" element={<ScheduleItemDetails />} />
               <Route path="/university/:id" element={<UniversityDetails />} />
+              <Route path="/course/:id" element={<CourseDetails />} />
           <Route path="/store" element={<Store />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

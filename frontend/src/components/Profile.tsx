@@ -24,25 +24,47 @@ const Profile: React.FC = () => {
   const [purchased, setPurchased] = useState<string[]>([]);
   const [completedCount, setCompletedCount] = useState<number>(0);
 
+  // Университет пользователя
+  const [universityName, setUniversityName] = useState<string | null>(null);
+
   // Подвкладка профиля: overview, store, settings
   const [profileTab, setProfileTab] = useState<'overview' | 'store' | 'settings'>('overview');
 
   useEffect(() => {
-    const storedXp = localStorage.getItem('userXp');
-    const storedCoins = localStorage.getItem('userCoins');
-    const storedPurchased = localStorage.getItem('purchasedItems');
-    const storedCompleted = localStorage.getItem('completedCourses');
-    if (storedXp) setXp(Number(storedXp));
-    if (storedCoins) setCoins(Number(storedCoins));
-    if (storedPurchased) setPurchased(JSON.parse(storedPurchased));
-    if (storedCompleted) {
+    // Загрузить данные профиля из бэкенда. Это включает xp, coins,
+    // завершённые курсы, купленные предметы и информацию об университете.
+    const loadProfile = async () => {
       try {
-        const parsed = JSON.parse(storedCompleted);
-        setCompletedCount(Object.keys(parsed).length);
+        const resp = await fetch('/api/profile');
+        if (resp.ok) {
+          const data = await resp.json();
+          setXp(data.xp ?? 0);
+          setCoins(data.coins ?? 0);
+          setUniversityName(data.university ? data.university.name : null);
+          // completed_courses is a list; we only store count
+          setCompletedCount((data.completed_courses || []).length);
+          setPurchased((data.purchases || []).map((p: any) => p.item_id));
+        }
       } catch {
-        setCompletedCount(0);
+        // fallback to localStorage if API unavailable
+        const storedXp = localStorage.getItem('userXp');
+        const storedCoins = localStorage.getItem('userCoins');
+        const storedPurchased = localStorage.getItem('purchasedItems');
+        const storedCompleted = localStorage.getItem('completedCourses');
+        if (storedXp) setXp(Number(storedXp));
+        if (storedCoins) setCoins(Number(storedCoins));
+        if (storedPurchased) setPurchased(JSON.parse(storedPurchased));
+        if (storedCompleted) {
+          try {
+            const parsed = JSON.parse(storedCompleted);
+            setCompletedCount(Object.keys(parsed).length);
+          } catch {
+            setCompletedCount(0);
+          }
+        }
       }
-    }
+    };
+    loadProfile();
   }, []);
 
   // Вспомогательный компонент для отображения магазина в рамках профиля. Передаёт
@@ -109,6 +131,11 @@ const Profile: React.FC = () => {
                 <p className="text-xl font-semibold text-yellow-700 dark:text-yellow-300">{coins}</p>
               </div>
             </div>
+          <div className="mt-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              ВУЗ: {universityName ? universityName : 'не привязан'}
+            </p>
+          </div>
             {purchased.length > 0 && (
               <div className="mt-4">
                 <h4 className="font-medium mb-2">Купленные товары</h4>

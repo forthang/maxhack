@@ -44,6 +44,7 @@ def get_schedule(db: Session, user_id: Optional[int] = None) -> List[schemas.Sch
                 start_time=item.start_time,
                 end_time=item.end_time,
                 description=item.description,
+                auditorium=item.auditorium,
                 signup_count=signup_count,
                 signed_up=signed_up,
             )
@@ -111,6 +112,7 @@ def get_events(db: Session, user_id: Optional[int] = None) -> List[schemas.Event
             description=event.description,
             duration_hours=event.duration_hours,
             materials=event.materials,
+            auditorium=event.auditorium,
             creator_id=None,
         )
         # Use model_copy/update to set additional fields not defined in the base model
@@ -141,6 +143,7 @@ def create_event(db: Session, payload: schemas.EventBase, creator_id: Optional[i
         description=payload.description,
         duration_hours=payload.duration_hours,
         materials=payload.materials,
+        auditorium=payload.auditorium,
     )
     db.add(event)
     db.commit()
@@ -152,6 +155,7 @@ def create_event(db: Session, payload: schemas.EventBase, creator_id: Optional[i
         description=event.description,
         duration_hours=event.duration_hours,
         materials=event.materials,
+        auditorium=event.auditorium,
         creator_id=None,
     )
 
@@ -172,6 +176,48 @@ def get_leaderboard(db: Session) -> List[schemas.LeaderboardEntry]:
             )
         )
     return leaderboard
+
+
+def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Optional[schemas.EventOut]:
+    """Update an existing event with the provided fields.
+
+    Args:
+        db: Active database session.
+        event_id: ID of the event to update.
+        payload: Partial event data to update.
+
+    Returns:
+        The updated EventOut schema or None if the event does not exist.
+    """
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if event is None:
+        return None
+    # Update fields if provided
+    if payload.event_time is not None:
+        event.event_time = payload.event_time
+    if payload.title is not None:
+        event.title = payload.title
+    if payload.description is not None:
+        event.description = payload.description
+    if payload.duration_hours is not None:
+        event.duration_hours = payload.duration_hours
+    if payload.materials is not None:
+        event.materials = payload.materials
+    if payload.auditorium is not None:
+        event.auditorium = payload.auditorium
+    db.commit()
+    db.refresh(event)
+    # Compose the result with sign‑up fields omitted
+    return schemas.EventOut(
+        id=event.id,
+        event_time=event.event_time,
+        title=event.title,
+        description=event.description,
+        duration_hours=event.duration_hours,
+        materials=event.materials,
+        auditorium=event.auditorium,
+        creator_id=None,
+    )
 
 
 def get_profile(db: Session, user_id: int) -> Optional[schemas.ProfileOut]:
@@ -310,6 +356,60 @@ def get_university(db: Session, university_id: int) -> Optional[schemas.Universi
     if uni is None:
         return None
     return schemas.UniversityOut(id=uni.id, name=uni.name, points=uni.points)
+
+
+def get_university_details(db: Session, university_id: int) -> Optional[schemas.UniversityDetailOut]:
+    """Return a university along with its students sorted by XP descending.
+
+    Args:
+        db: Active database session.
+        university_id: Primary key of the university.
+
+    Returns:
+        UniversityDetailOut if found, else None.
+    """
+    uni = db.query(models.University).filter(models.University.id == university_id).first()
+    if uni is None:
+        return None
+    # Retrieve all users assigned to this university. Order by XP descending to
+    # surface the most active students first. Coins are included for reference.
+    students = (
+        db.query(models.User)
+        .filter(models.User.university_id == university_id)
+        .order_by(models.User.xp.desc())
+        .all()
+    )
+    student_out = [
+        schemas.UniversityStudentOut(id=s.id, name=s.name, xp=s.xp, coins=s.coins)
+        for s in students
+    ]
+    return schemas.UniversityDetailOut(id=uni.id, name=uni.name, points=uni.points, students=student_out)
+
+
+def add_student_to_university(db: Session, user_id: int, university_id: int) -> bool:
+    """Assign a user to a university.
+
+    A student can only belong to one university at a time. If the user is
+    already assigned to a university or either the user or university
+    does not exist, no action is taken and False is returned.
+
+    Args:
+        db: Active database session.
+        user_id: Identifier of the student to assign.
+        university_id: Target university's identifier.
+
+    Returns:
+        True if the assignment was successful, False otherwise.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user or user.university_id is not None:
+        return False
+    uni = db.query(models.University).filter(models.University.id == university_id).first()
+    if not uni:
+        return False
+    user.university_id = university_id
+    db.commit()
+    return True
 
 
 def update_profile(db: Session, user_id: int, payload: schemas.UserUpdate) -> Optional[schemas.ProfileOut]:

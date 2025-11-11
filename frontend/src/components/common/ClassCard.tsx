@@ -13,9 +13,10 @@ interface ClassCardProps {
   signupCount?: number;
   onSignup?: () => void;
   onClick?: () => void;
+  auditorium?: string;
 }
 
-const ClassCard: React.FC<ClassCardProps> = ({ start, end, title, description, signedUp, signupCount, onSignup, onClick }) => {
+const ClassCard: React.FC<ClassCardProps> = ({ start, end, title, description, signedUp, signupCount, onSignup, onClick, auditorium }) => {
   return (
     <div
       className="fade-in bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm flex flex-col cursor-pointer"
@@ -28,6 +29,9 @@ const ClassCard: React.FC<ClassCardProps> = ({ start, end, title, description, s
       </p>
       <p className="mt-1 font-semibold text-gray-800 dark:text-gray-300">{title}</p>
       <p className="mt-1 text-gray-700 dark:text-gray-400">{description}</p>
+      {auditorium && (
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Аудитория: {auditorium}</p>
+      )}
       <div className="flex justify-between items-center mt-2">
         {signupCount !== undefined && (
           <span className="text-xs text-gray-500 dark:text-gray-400">{signupCount} записей</span>

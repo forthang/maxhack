@@ -8,6 +8,9 @@ demo application but would normally be restricted.
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+
+from .. import models  # needed for update_event annotations
 
 from .. import crud, schemas
 from ..database import SessionLocal
@@ -65,3 +68,26 @@ def unsubscribe_event(event_id: int, db: Session = Depends(get_db)) -> dict[str,
     """
     success = crud.unsubscribe_event(db, event_id=event_id, user_id=1)
     return {"success": success}
+
+
+@router.put("/{event_id}", response_model=schemas.EventOut)
+def update_event_endpoint(event_id: int, payload: schemas.EventUpdate, db: Session = Depends(get_db)) -> schemas.EventOut:
+    """Update an existing event.
+
+    Accepts partial fields via EventUpdate and returns the updated event.
+    If the event does not exist, raises HTTP 404.
+    """
+    updated = crud.update_event(db, event_id=event_id, payload=payload)
+    if updated is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Event not found")
+    # annotate with sign‑up info for the default user
+    # compute sign‑up count and status
+    signup_count = db.query(func.count(models.EventSignup.id)).filter(models.EventSignup.event_id == event_id).scalar()
+    user_signed = (
+        db.query(models.EventSignup)
+        .filter(models.EventSignup.event_id == event_id, models.EventSignup.user_id == 1)
+        .first()
+        is not None
+    )
+    return updated.model_copy(update={"signup_count": signup_count, "signed_up": user_signed})

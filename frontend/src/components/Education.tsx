@@ -232,14 +232,36 @@ const Education: React.FC = () => {
     }
   }, [xp, coins, completed]);
 
-  // Завершение курса: отмечаем как завершённый и начисляем награды
-  const handleComplete = (node: CourseNode) => {
+  // Завершение курса: отмечаем как завершённый, начисляем награды и
+  // синхронизируемся с бэкендом. Если сервер возвращает новые значения
+  // XP/coins, используем их; иначе прибавляем локально. Используем
+  // асинхронную функцию, чтобы дождаться ответа API.
+  const handleComplete = async (node: CourseNode) => {
     if (completed[node.id]) return;
     setCompleted((prev) => ({ ...prev, [node.id]: true }));
-    setXp((prev) => prev + node.xp);
-    setCoins((prev) => prev + node.coins);
+    try {
+      const resp = await fetch(
+        `/api/profile/courses/${node.id}/complete?xp=${node.xp}&coins=${node.coins}`,
+        { method: 'POST' },
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        // Update local XP/coins from response if available
+        if (data.xp !== undefined) setXp(data.xp);
+        if (data.coins !== undefined) setCoins(data.coins);
+      } else {
+        // Fallback: update locally if server call fails
+        setXp((prev) => prev + node.xp);
+        setCoins((prev) => prev + node.coins);
+      }
+    } catch {
+      setXp((prev) => prev + node.xp);
+      setCoins((prev) => prev + node.coins);
+    }
     if (node.xp > 0 || node.coins > 0) {
-      alert(`Поздравляем! Вы завершили «${node.title}» и получили ${node.xp} XP и ${node.coins} монет.`);
+      alert(
+        `Поздравляем! Вы завершили «${node.title}» и получили ${node.xp} XP и ${node.coins} монет.`,
+      );
     }
   };
 
