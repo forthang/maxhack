@@ -26,9 +26,13 @@ router = APIRouter(prefix="/schedule", tags=["schedule"])
 
 
 @router.get("", response_model=list[schemas.ScheduleItemOut])
-def read_schedule(db: Session = Depends(get_db)) -> list[schemas.ScheduleItemOut]:
-    """Return the full schedule. Anonymous users always see signed_up=False."""
-    return crud.get_schedule(db, None)
+def read_schedule(user_id: int | None = None, db: Session = Depends(get_db)) -> list[schemas.ScheduleItemOut]:
+    """Return the full schedule.
+
+    If a user_id is provided, annotate each item with whether the user has
+    registered. When omitted, anonymous users always see signed_up=False.
+    """
+    return crud.get_schedule(db, user_id)
 
 
 @router.post("/{schedule_id}/signup", response_model=dict, status_code=status.HTTP_200_OK)

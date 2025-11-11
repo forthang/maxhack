@@ -11,7 +11,7 @@ We rely on SQLAlchemy's declarative base to define models in `models.py`.
 """
 
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Read the database URL from environment or use a sensible default. This
@@ -89,43 +89,74 @@ def init_db() -> None:
             uni10 = models.University(name="ДВФУ", points=85)
             db.add_all([uni1, uni2, uni3, uni4, uni5, uni6, uni7, uni8, uni9, uni10])
 
-        # Schedule items
-        schedule_count = db.execute(text("SELECT COUNT(*) FROM schedule")).scalar()
-        if not schedule_count:
-            from datetime import datetime, timedelta
-            now = datetime.utcnow()
-            lesson1 = models.ScheduleItem(
-                start_time=now + timedelta(hours=1),
-                end_time=now + timedelta(hours=2),
-                description="Лекция по математике"
-            )
-            lesson2 = models.ScheduleItem(
-                start_time=now + timedelta(days=1, hours=2),
-                end_time=now + timedelta(days=1, hours=3),
-                description="Практика по программированию"
-            )
-            db.add_all([lesson1, lesson2])
-
-        # Events
-        event_count = db.execute(text("SELECT COUNT(*) FROM events")).scalar()
-        if not event_count:
-            from datetime import datetime, timedelta
-            event1 = models.Event(
-                event_time=datetime.utcnow() + timedelta(days=2),
-                title="Хакатон",
-                description="Участвуйте в командном хакатоне и выиграйте призы!",
-                duration_hours=2,
-                materials="https://example.com/hackathon-info",
-            )
-            event2 = models.Event(
-                event_time=datetime.utcnow() + timedelta(days=3),
-                title="Семинар по карьере",
-                description="Поговорим о карьерных возможностях для студентов.",
-                duration_hours=2,
-                materials="https://example.com/career-seminar",
-            )
-            db.add_all([event1, event2])
-
+        # Always reset schedule and events to ensure a full week of demo content.
+        # Clear existing signups, schedule items and events. This makes
+        # the database seed deterministic on each startup. For production,
+        # consider using migrations or conditional seeding instead of
+        # deleting data.
+        db.execute(text("DELETE FROM signups"))
+        db.execute(text("DELETE FROM event_signups"))
+        db.execute(text("DELETE FROM schedule"))
+        db.execute(text("DELETE FROM events"))
         db.commit()
+
+        # Compute Monday of the current week in UTC. Python's isoweekday()
+        # returns 1 for Monday, so subtract (isoweekday - 1) to get Monday.
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        iso_offset = now.isoweekday() - 1
+        monday = (now - timedelta(days=iso_offset)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Seed schedule items: one for each day of the week with a fixed
+        # two‑hour duration. Titles describe typical university activities.
+        lesson_specs = [
+            (0, 10, "Лекция: линейная алгебра"),
+            (1, 9, "Практика: программирование"),
+            (2, 14, "Семинар: физика"),
+            (3, 11, "Лабораторная: химия"),
+            (4, 15, "Проектная работа"),
+            (5, 10, "Спортивные занятия"),
+            (6, 12, "Кофе с куратором"),
+        ]
+        schedule_entries: list[models.ScheduleItem] = []
+        for day_offset, hour, desc in lesson_specs:
+            start = monday + timedelta(days=day_offset, hours=hour)
+            end = start + timedelta(hours=2)
+            schedule_entries.append(models.ScheduleItem(start_time=start, end_time=end, description=desc))
+        db.add_all(schedule_entries)
+
+        # Seed extracurricular events across the week. Each lasts two hours
+        # and includes optional materials links.
+        event_specs = [
+            (2, 18, "Митап: Data Science", "Современные методы обработки данных", "https://example.com/ds-meetup"),
+            (4, 20, "Кино вечер", "Просмотр классического фильма", "https://example.com/movie-night"),
+            (5, 16, "Волонтёрский субботник", "Помогаем вместе убрать парк", "https://example.com/volunteer"),
+        ]
+        event_entries: list[models.Event] = []
+        for day_offset, hour, title, desc, mats in event_specs:
+            time = monday + timedelta(days=day_offset, hours=hour)
+            event_entries.append(
+                models.Event(
+                    event_time=time,
+                    title=title,
+                    description=desc,
+                    duration_hours=2,
+                    materials=mats,
+                )
+            )
+        db.add_all(event_entries)
+        db.commit()
+
+        # Ensure there is a default user with ID=1. This user acts as the
+        # authenticated principal in the demo application and is granted all
+        # privileges. If the user table already contains a row with ID=1,
+        # leave it unchanged; otherwise, insert a teacher to cover both
+        # teacher and student scenarios.
+        user_exists = db.execute(text("SELECT COUNT(*) FROM users WHERE id=1")).scalar()
+        if not user_exists:
+            db.execute(text(
+                "INSERT INTO users (id, name, role) VALUES (1, 'Demo User', 'teacher')"
+            ))
+            db.commit()
     finally:
         db.close()

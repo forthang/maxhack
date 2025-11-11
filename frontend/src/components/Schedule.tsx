@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// Common reusable UI components
+import ClassCard from './common/ClassCard';
+import EventCard from './common/EventCard';
+import CreateEventForm from './common/CreateEventForm';
+
 /**
  * Types representing schedule items (учебные занятия) и события (внеучебные мероприятия).
  * В API расписания присутствуют начало, конец, описание и информация о записи.
@@ -52,12 +57,9 @@ const Schedule: React.FC = () => {
   const [weekOffset, setWeekOffset] = useState<number>(0);
   // Флаг отображения формы создания события
   const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
-  // Поля новой записи события
-  const [newEventTitle, setNewEventTitle] = useState('');
-  const [newEventDesc, setNewEventDesc] = useState('');
-  const [newEventDate, setNewEventDate] = useState<string>('');
-  const [newEventDuration, setNewEventDuration] = useState<number>(2);
-  const [newEventMaterials, setNewEventMaterials] = useState<string>('');
+  // Удалены локальные поля новой записи события. Создание событий
+  // делегировано в отдельный компонент CreateEventForm. Состояния
+  // названия, описания, даты и материалов теперь управляются там.
 
   // Текущий режим отображения: 'schedule' (сеткой), 'events' (список всех
   // мероприятий), 'my-events' (записанные занятия). По умолчанию — schedule.
@@ -93,6 +95,28 @@ const Schedule: React.FC = () => {
   const navigate = useNavigate();
 
   /**
+   * Обработчик успешного создания события. Принимает идентификатор
+   * созданного мероприятия, сохраняет его в локальном состоянии и
+   * перезагружает данные расписания. Этот обработчик передаётся
+   * компоненту CreateEventForm и вызывается после успешного POST /api/events.
+   */
+  const handleEventCreated = async (id: number) => {
+    // сохраняем ID созданного события в локальное состояние
+    if (!createdEventIds.includes(id)) {
+      const updated = [...createdEventIds, id];
+      setCreatedEventIds(updated);
+      try {
+        localStorage.setItem('createdEventIds', JSON.stringify(updated));
+      } catch {
+        /* ignore localStorage errors */
+      }
+    }
+    // скрываем форму создания и обновляем расписание
+    setShowCreateForm(false);
+    await loadData();
+  };
+
+  /**
    * Загрузить данные расписания и событий с бэкенда, а затем привести их к
    * унифицированному виду. Для событий устанавливаем продолжительность равной
    * двум часам.
@@ -100,15 +124,16 @@ const Schedule: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Запрашиваем расписание и события с учётом текущего пользователя (ID=1).
       const [scheduleResp, eventsResp] = await Promise.all([
-        fetch('/api/schedule'),
-        fetch('/api/events'),
+        fetch('/api/schedule?user_id=1'),
+        fetch('/api/events?user_id=1'),
       ]);
       const unified: UnifiedItem[] = [];
       if (scheduleResp.ok) {
         const scheduleData: ScheduleItem[] = await scheduleResp.json();
         scheduleData.forEach((item) => {
-        unified.push({
+          unified.push({
             id: item.id,
             start: new Date(item.start_time),
             end: new Date(item.end_time),
@@ -116,27 +141,31 @@ const Schedule: React.FC = () => {
             description: item.description,
             type: 'class',
             signup_count: item.signup_count,
-            // Определяем подписку локально: бэкенд всегда возвращает false
-            signed_up: signedUpIds.includes(item.id),
+            // Бэкенд теперь возвращает признак signed_up, но для обратной
+            // совместимости используем локальное хранилище. Если бэкенд
+            // отмечает запись подписанной, также считаем её подписанной.
+            signed_up: (item as any).signed_up || signedUpIds.includes(item.id),
             sourceId: item.id,
-        });
+          });
         });
       }
       if (eventsResp.ok) {
         const eventsData: any[] = await eventsResp.json();
         eventsData.forEach((ev) => {
-        const start = new Date(ev.event_time);
-        const duration = ev.duration_hours ?? 2;
-        const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
-        unified.push({
+          const start = new Date(ev.event_time);
+          const duration = ev.duration_hours ?? 2;
+          const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
+          unified.push({
             id: ev.id + 10000,
             start,
             end,
             title: ev.title,
             description: ev.description,
             type: 'event',
+            signup_count: ev.signup_count,
+            signed_up: ev.signed_up,
             sourceId: ev.id,
-        });
+          });
         });
       }
       setItems(unified);
@@ -206,7 +235,19 @@ const Schedule: React.FC = () => {
    * Приводим все элементы к позиции в сетке. Выбираем только те, что попадают
    * в текущую неделю. Если элемент выходит за пределы недели, он отбрасывается.
    */
+  // В сетке отображаем только те занятия и мероприятия, на которые
+  // пользователь подписан (classes) или подписан на событие (events). Это
+  // предотвращает отображение всех элементов по умолчанию.
   const itemsForGrid = items
+    .filter((item) => {
+      if (item.type === 'class') {
+        return signedUpIds.includes(item.id);
+      }
+      if (item.type === 'event') {
+        return (item as any).signed_up;
+      }
+      return false;
+    })
     .map((item) => {
       const start = item.start;
       const end = item.end;
@@ -392,175 +433,82 @@ const Schedule: React.FC = () => {
             .filter((item) => item.type === 'class')
             .sort((a, b) => a.start.getTime() - b.start.getTime())
             .map((item) => (
-              <div
+              <ClassCard
                 key={item.id}
-                className="fade-in bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm flex flex-col"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium text-gray-700 dark:text-gray-200">
-                      {item.start.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}
-                      {' — '}
-                      {item.end.toLocaleTimeString('ru-RU', { timeStyle: 'short' })}
-                    </p>
-                    <p className="mt-1 font-semibold text-gray-800 dark:text-gray-300">{item.title}</p>
-                    <p className="mt-1 text-gray-700 dark:text-gray-400">{item.description}</p>
-                  </div>
-                  <div className="flex flex-col items-end space-y-2 ml-4">
-                    {signedUpIds.includes(item.id) ? (
-                      <span className="text-green-600 dark:text-green-400 text-sm">Записаны</span>
-                    ) : (
-                      <button
-                        onClick={() => handleSignup(item as any)}
-                        className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm"
-                      >
-                        Записаться
-                      </button>
-                    )}
-                    <button
-                      onClick={() => navigate(`/event/${item.sourceId}`)}
-                      className="text-blue-600 dark:text-blue-400 text-sm underline"
-                    >
-                      Подробнее
-                    </button>
-                  </div>
-                </div>
-              </div>
+                start={item.start}
+                end={item.end}
+                title={item.title}
+                description={item.description}
+                signedUp={signedUpIds.includes(item.id)}
+                signupCount={item.signup_count}
+                onSignup={() => handleSignup(item as any)}
+                onClick={() => navigate(`/event/${item.sourceId}`)}
+              />
             ))}
         </div>
       ) : (
-        // Мои события: занятия, на которые подписался пользователь
+        // Мои события: занятия и внеучебные события, на которые пользователь подписался или которые создал
         <div className="space-y-4">
           {showCreateForm && (
-            <div className="mb-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm space-y-3 fade-in">
-              <h3 className="text-lg font-medium mb-2">Новое событие</h3>
-              <div>
-                <label className="block text-sm font-medium mb-1">Дата и время</label>
-                <input
-                  type="datetime-local"
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                  value={newEventDate}
-                  onChange={(e) => setNewEventDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Длительность (часы)</label>
-                <select
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                  value={newEventDuration}
-                  onChange={(e) => setNewEventDuration(Number(e.target.value))}
-                >
-                  {[1, 2, 3, 4].map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Название</label>
-                <input
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                  value={newEventTitle}
-                  onChange={(e) => setNewEventTitle(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Описание</label>
-                <textarea
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                  value={newEventDesc}
-                  onChange={(e) => setNewEventDesc(e.target.value)}
-                ></textarea>
-              </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Материалы (ссылка)</label>
-            <input
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-              value={newEventMaterials}
-              onChange={(e) => setNewEventMaterials(e.target.value)}
-            />
-          </div>
-              <button
-                className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-4 py-2 rounded-md transition-colors"
-                onClick={async () => {
-                  if (!newEventDate || !newEventTitle) return;
-                  try {
-                    const resp = await fetch('/api/events', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        // Передаём дату и время без преобразования в UTC, чтобы
-                        // сохранить локальное время пользователя. Бэкенд
-                        // интерпретирует эту строку как локальное время при
-                        // сохранении.
-                        event_time: newEventDate,
-                        title: newEventTitle,
-                        description: newEventDesc,
-                        duration_hours: newEventDuration,
-                        materials: newEventMaterials || null,
-                      }),
-                    });
-                    if (resp.ok) {
-                      const created = await resp.json();
-                      // Сохраняем ID созданного события, чтобы отображать его в "My events"
-                      if (created && created.id !== undefined) {
-                        const updated = [...createdEventIds, created.id];
-                        setCreatedEventIds(updated);
-                        try {
-                          localStorage.setItem('createdEventIds', JSON.stringify(updated));
-                        } catch {
-                          /* ignore */
-                        }
-                      }
-                      setNewEventTitle('');
-                      setNewEventDesc('');
-                      setNewEventMaterials('');
-                      setNewEventDate('');
-                      setNewEventDuration(2);
-                      setShowCreateForm(false);
-                      await loadData();
-                    }
-                  } catch (e) {
-                    console.error(e);
-                  }
-                }}
-              >
-                Создать
-              </button>
-            </div>
+            <CreateEventForm onCreated={handleEventCreated} />
           )}
+          {/* Список занятий и мероприятий, на которые пользователь записался или которые создал */}
           {items
-            .filter(
-              (item) =>
-                (item.type === 'class' && signedUpIds.includes(item.id)) ||
-                (item.type === 'event' && createdEventIds.includes(item.sourceId))
-            )
-            .map((item) => (
-              <div
-                key={item.id}
-                className="fade-in bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm cursor-pointer"
-                onClick={() => {
-                  if (item.type === 'event') {
-                    navigate(`/event/${item.sourceId}`);
-                  }
-                }}
-              >
-                <p className="font-medium text-gray-700 dark:text-gray-200">
-                  {item.start.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}
-                  {' — '}
-                  {item.end.toLocaleString('ru-RU', { timeStyle: 'short' })}
-                </p>
-                <p className="mt-1 text-gray-800 dark:text-gray-300">{item.title}</p>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{item.description}</p>
-                {item.type === 'event' && <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 underline">Подробнее</p>}
-              </div>
-            ))}
-          {items.filter(
-            (item) =>
-              (item.type === 'class' && signedUpIds.includes(item.id)) ||
-              (item.type === 'event' && createdEventIds.includes(item.sourceId))
-          ).length === 0 && (
+            .filter((item) => {
+              if (item.type === 'class') {
+                return signedUpIds.includes(item.id);
+              }
+              if (item.type === 'event') {
+                return (item as any).signed_up || createdEventIds.includes(item.sourceId);
+              }
+              return false;
+            })
+            .map((item) => {
+              if (item.type === 'class') {
+                return (
+                  <ClassCard
+                    key={item.id}
+                    start={item.start}
+                    end={item.end}
+                    title={item.title}
+                    description={item.description}
+                    signedUp={true}
+                    signupCount={item.signup_count}
+                    onClick={() => {
+                      /* Курсы пока не имеют отдельной страницы, поэтому просто игнорируем */
+                    }}
+                  />
+                );
+              }
+              // Для мероприятий отображаем карточку с ссылкой на детали и кнопкой отписки
+              return (
+                <EventCard
+                  key={item.id}
+                  start={item.start}
+                  end={item.end}
+                  title={item.title}
+                  description={item.description}
+                  onDetails={() => navigate(`/event/${item.sourceId}`)}
+                  onUnsubscribe={item.signed_up
+                    ? async () => {
+                        const resp = await fetch(`/api/events/${item.sourceId}/unsubscribe`, { method: 'POST' });
+                        if (resp.ok) await loadData();
+                      }
+                    : undefined}
+                  signedUp={(item as any).signed_up}
+                />
+              );
+            })}
+          {/* Если нет подписанных занятий и событий, выводим сообщение */}
+          {items.filter((item) => {
+            if (item.type === 'class') {
+              return signedUpIds.includes(item.id);
+            }
+            if (item.type === 'event') {
+              return (item as any).signed_up || createdEventIds.includes(item.sourceId);
+            }
+            return false;
+          }).length === 0 && (
             <p className="text-gray-600 dark:text-gray-400">Вы ещё не подписались и не создали ни одного события.</p>
           )}
         </div>

@@ -13,7 +13,8 @@
     "react-router-dom": "^6.23.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
-    "reactflow": "^11.6.4"
+    "reactflow": "^11.6.4",
+    "@xyflow/react": "latest"
   },
   "devDependencies": {
     "typescript": "^5.3.3",

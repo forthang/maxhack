@@ -145,3 +145,37 @@ def test_profile(client: TestClient):
     updated_profile = put_resp.json()
     assert updated_profile["name"] == "Updated"
     assert updated_profile["progress"] == 42
+
+
+def test_event_signup_and_unsubscribe(client: TestClient):
+    """Ensure that signing up and unsubscribing from an event updates flags."""
+    # fetch event id from DB
+    db = TestingSessionLocal()
+    try:
+        event = db.query(models.Event).first()
+        user = db.query(models.User).first()
+    finally:
+        db.close()
+    # initial events listing should show not signed up
+    resp = client.get("/events", params={"user_id": user.id})
+    assert resp.status_code == 200
+    events = resp.json()
+    assert events[0]["signed_up"] is False
+    # sign up the user
+    sign_resp = client.post(f"/events/{event.id}/signup", params={"user_id": user.id})
+    assert sign_resp.status_code == 200
+    # listing again should reflect signed_up
+    resp2 = client.get("/events", params={"user_id": user.id})
+    assert resp2.status_code == 200
+    events2 = resp2.json()
+    assert events2[0]["signed_up"] is True
+    assert events2[0]["signup_count"] == 1
+    # unsubscribe
+    unsub_resp = client.post(f"/events/{event.id}/unsubscribe", params={"user_id": user.id})
+    assert unsub_resp.status_code == 200
+    # listing again should show unsigned and zero count
+    resp3 = client.get("/events", params={"user_id": user.id})
+    assert resp3.status_code == 200
+    events3 = resp3.json()
+    assert events3[0]["signed_up"] is False
+    assert events3[0]["signup_count"] == 0

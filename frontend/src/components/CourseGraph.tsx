@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import ReactFlow, {
-  Node,
-  Edge,
+import React, { useEffect, useState, useCallback } from 'react';
+// Импортируем ReactFlow из пакета @xyflow/react. Это лёгкая версия
+// библиотеки React Flow, которая позволяет строить графы. Мы будем
+// использовать только отображение узлов и связей без встроенных
+// библиотек Overflow UI.
+import {
+  ReactFlow,
   Background,
   Controls,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
 /**
  * Тип узла дорожной карты. Каждый узел имеет уникальный идентификатор, название,
@@ -27,6 +30,7 @@ interface CourseGraphProps {
   onComplete: (node: CourseNode) => void;
 }
 
+
 /**
  * CourseGraph строит интерактивный граф курсов на основе React Flow. Позиции
  * узлов вычисляются по алгоритму tidy tree: листья располагаются на
@@ -35,77 +39,63 @@ interface CourseGraphProps {
  * «пройти», если курс ещё не завершён.
  */
 const CourseGraph: React.FC<CourseGraphProps> = ({ root, completed, onComplete }) => {
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [edges, setEdges] = useState<any[]>([]);
   const [selected, setSelected] = useState<CourseNode | null>(null);
 
   /**
-   * Рекурсивный алгоритм построения позиций узлов. Возвращает массив узлов и
-   * устанавливает координаты через замыкание xCounter. Каждый уровень
-   * располагается по оси Y на одинаковом расстоянии.
+   * Простая раскладка узлов для React Flow. Каждому узлу присваиваются
+   * координаты на основе глубины (основная ось X) и текущего счётчика
+   * (ось Y). Это гарантирует, что все узлы будут видимыми. Уровни
+   * располагаются по горизонтали, а последовательность – по вертикали.
    */
-  const buildLayout = (
+  const flattenLayout = (
     node: CourseNode,
     depth: number,
-    xCounter: { value: number },
-    nodesArr: Node[],
-    edgesArr: Edge[],
-  ): { node: Node; width: number } => {
-    // Если лист, присваиваем текущий x и увеличиваем счётчик
-    let x: number;
-    let width: number;
-    if (!node.children || node.children.length === 0) {
-      x = xCounter.value;
-      width = 1;
-      xCounter.value += 1;
-    } else {
-      const childResults: { node: Node; width: number }[] = [];
-      node.children.forEach((child) => {
-        const res = buildLayout(child, depth + 1, xCounter, nodesArr, edgesArr);
-        childResults.push(res);
-      });
-      const firstX = childResults[0].node.position.x;
-      const lastX = childResults[childResults.length - 1].node.position.x;
-      x = (firstX + lastX) / 2;
-      width = childResults.reduce((acc, cur) => acc + cur.width, 0);
-    }
-    const posX = x * 200;
-    const posY = depth * 180;
-    const rfNode: Node = {
+    state: { yCounter: number },
+    nodesArr: any[],
+    edgesArr: any[],
+  ): void => {
+    const x = depth * 200;
+    const y = state.yCounter * 120;
+    state.yCounter += 1;
+    const rfNode = {
       id: node.id,
       data: { label: node.title, course: node },
-      position: { x: posX, y: posY },
-      type: 'default',
+      position: { x, y },
     };
     nodesArr.push(rfNode);
     if (node.children) {
       node.children.forEach((child) => {
         edgesArr.push({ id: `${node.id}-${child.id}`, source: node.id, target: child.id });
+        flattenLayout(child, depth + 1, state, nodesArr, edgesArr);
       });
     }
-    return { node: rfNode, width };
   };
 
   useEffect(() => {
-    const counter = { value: 0 };
-    const nodesArr: Node[] = [];
-    const edgesArr: Edge[] = [];
-    buildLayout(root, 0, counter, nodesArr, edgesArr);
+    const nodesArr: any[] = [];
+    const edgesArr: any[] = [];
+    const state = { yCounter: 0 };
+    // Построить простую раскладку: глубина определяет X, порядок – Y
+    flattenLayout(root, 0, state, nodesArr, edgesArr);
+    // Применяем стили для завершённых и незавершённых курсов
     const styled = nodesArr.map((n) => {
       const course = n.data.course as CourseNode;
+      const done = completed[course.id];
       return {
         ...n,
-        draggable: false,
-        data: { ...n.data, done: completed[course.id] },
+        data: { ...n.data, done },
         style: {
           borderRadius: '8px',
           padding: '6px 10px',
           color: '#fff',
-          backgroundColor: completed[course.id] ? '#16a34a' : '#2563eb',
+          backgroundColor: done ? '#16a34a' : '#2563eb',
           border: '1px solid rgba(0,0,0,0.1)',
           fontSize: '12px',
         },
-      } as Node;
+        draggable: false,
+      };
     });
     setNodes(styled);
     setEdges(edgesArr);
@@ -115,7 +105,7 @@ const CourseGraph: React.FC<CourseGraphProps> = ({ root, completed, onComplete }
    * Обработчик клика на узел: отмечает выбранный узел и начисляет награды,
    * если курс ещё не завершён.
    */
-  const onNodeClick = (_: any, node: Node) => {
+  const onNodeClick = (_: any, node: any) => {
     const course = node.data.course as CourseNode;
     setSelected(course);
     if (!completed[course.id]) {
@@ -124,7 +114,9 @@ const CourseGraph: React.FC<CourseGraphProps> = ({ root, completed, onComplete }
   };
 
   return (
-    <div className="w-full h-[500px] overflow-x-auto">
+    // Увеличиваем высоту контейнера до 600px, чтобы граф не выходил за пределы
+    // видимой области. React Flow сам масштабирует узлы через fitView.
+    <div className="w-full h-[600px] overflow-x-auto">
       <ReactFlow
         nodes={nodes}
         edges={edges}

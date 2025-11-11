@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import EventCard from './common/EventCard';
+import { useNavigate } from 'react-router-dom';
 
 interface EventItem {
   id: number;
@@ -14,6 +16,7 @@ interface EventItem {
 const Events: React.FC = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const loadEvents = async () => {
     setLoading(true);
@@ -42,47 +45,36 @@ const Events: React.FC = () => {
         <p>Загрузка...</p>
       ) : (
         <div className="space-y-4 pb-20">
-          {events.map((e) => (
-            <div
-              key={e.id}
-              className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 border border-gray-100 dark:border-gray-700"
-            >
-              <p className="font-medium text-gray-700 dark:text-gray-200">
-                {new Date(e.event_time).toLocaleString('ru-RU', {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              </p>
-              <p className="mt-1 font-semibold text-gray-800 dark:text-gray-300">{e.title}</p>
-              <p className="mt-1 text-gray-700 dark:text-gray-400">{e.description}</p>
-              {e.signup_count !== undefined && (
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Участников: {e.signup_count}</p>
-              )}
-              <div className="mt-3 flex items-center space-x-3">
-                {!e.signed_up ? (
-                  <button
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                    onClick={async () => {
-                      const resp = await fetch(`/api/events/${e.id}/signup`, { method: 'POST' });
-                      if (resp.ok) loadEvents();
-                    }}
-                  >
-                    Записаться
-                  </button>
-                ) : (
-                  <button
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                    onClick={async () => {
-                      const resp = await fetch(`/api/events/${e.id}/unsubscribe`, { method: 'POST' });
-                      if (resp.ok) loadEvents();
-                    }}
-                  >
-                    Отписаться
-                  </button>
-                )}
+          {events.map((e) => {
+            // compute start and end times
+            const start = new Date(e.event_time);
+            const duration = e.duration_hours ?? 2;
+            const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
+            return (
+              <div key={e.id} className="space-y-2">
+                <EventCard
+                  start={start}
+                  end={end}
+                  title={e.title}
+                  description={e.description}
+                  onDetails={() => navigate(`/event/${e.id}`)}
+                  onSignup={!e.signed_up
+                    ? async () => {
+                        const resp = await fetch(`/api/events/${e.id}/signup`, { method: 'POST' });
+                        if (resp.ok) loadEvents();
+                      }
+                    : undefined}
+                  onUnsubscribe={e.signed_up
+                    ? async () => {
+                        const resp = await fetch(`/api/events/${e.id}/unsubscribe`, { method: 'POST' });
+                        if (resp.ok) loadEvents();
+                      }
+                    : undefined}
+                  signedUp={e.signed_up ?? false}
+                />
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
