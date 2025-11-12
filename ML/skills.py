@@ -1,0 +1,25 @@
+AVAILABLE_SKILLS = [
+    "Python", "JavaScript", "TypeScript", "Java", "C#", "C++", "Go", "Rust", "Swift", "Kotlin",
+    "HTML", "CSS", "React", "Vue", "Angular", "Node.js", "Express", "Django", "Flask", "FastAPI",
+    "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch",
+    "Linux", "Docker", "Kubernetes", "CI/CD", "AWS", "Azure", "GCP",
+    "Machine Learning", "Deep Learning", "Data Science", "Computer Vision", "NLP",
+    "Pandas", "NumPy", "Scikit-learn", "TensorFlow", "PyTorch", "OpenCV",
+    "Algorithms", "Data Structures", "System Design", "Networking", "Security", "Cryptography",
+    "Mathematics", "Linear Algebra", "Statistics", "Probability",
+    "Git", "Agile", "Scrum", "Project Management", "Product Management",
+    "A/B Testing", "Analytics", "Business Intelligence",
+    "iOS", "Android", "React Native", "Flutter", "Xcode", "Android SDK",
+    "Unity", "Game Design", "WebGL",
+    "UX/UI Design", "Figma", "Adobe XD",
+    "Backend", "Frontend", "Full Stack", "DevOps", "QA", "Testing",
+    "REST API", "GraphQL", "Microservices", "Serverless",
+    "Indexing", "Optimization", "Performance", "Scalability",
+    "IT", "AI", "Digital", "Computer Science", "Design", "Engineering", "Programming",
+    "Cybersecurity", "Digital Marketing", "Software Engineering", "Robotics",
+    "Materials", "Data Analysis", "Aerospace", "Automation", "Physics",
+    "Software Development", "Economics", "Finance", "Business Analytics",
+    "IT Management", "Management", "Public Policy", "Digital Transformation",
+    "Telecommunications", "Electronics", "Marine Technology", "Marketing"
+]
+
