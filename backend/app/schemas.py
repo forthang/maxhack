@@ -14,178 +14,94 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-
-
-from .models import UserRole
-
-
-
+# from .models import UserRole # No longer used
 
 
 class GroupBase(BaseModel):
-
     name: str
-
     course_id: int
 
 
-
-
-
 class GroupOut(GroupBase):
-
     id: int
 
-
-
     class Config:
-
         from_attributes = True
-
-
-
 
 
 class CourseBase(BaseModel):
-
     year: int
-
     specialization_id: int
 
 
-
-
-
 class CourseOut(CourseBase):
-
     id: int
 
-
-
     class Config:
-
         from_attributes = True
-
-
-
 
 
 class SpecializationBase(BaseModel):
-
     name: str
-
     university_id: int
 
 
-
-
-
 class SpecializationOut(SpecializationBase):
-
     id: int
 
-
-
     class Config:
-
         from_attributes = True
-
-
-
 
 
 class UserBase(BaseModel):
-
-    name: str
-
-    role: UserRole
-
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    photo_url: Optional[str] = None
+    language_code: Optional[str] = None
     group_id: Optional[int] = None
-
-    achievements: Optional[str] = None
-
-    progress: int = Field(default=0, ge=0, le=100)
-
-
-
 
 
 class UserCreate(UserBase):
-
     pass
 
 
-
-
-
 class UserUpdate(BaseModel):
-
-    name: Optional[str] = None
-
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    photo_url: Optional[str] = None
     group_id: Optional[int] = None
-
-    achievements: Optional[str] = None
-
-    progress: Optional[int] = Field(default=None, ge=0, le=100)
-
-
-
 
 
 class UserOut(UserBase):
-
     id: int
 
-
-
     class Config:
-
         from_attributes = True
-
-
-
 
 
 class UniversityBase(BaseModel):
-
     name: str
-
     points: int = 0
 
 
-
-
-
 class UniversityOut(UniversityBase):
-
     id: int
 
-
-
     class Config:
-
         from_attributes = True
 
 
-
-
-
 class UniversityStudentOut(BaseModel):
-
     id: int
-
-    name: str
-
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     xp: int
-
     coins: int
-
     group: GroupOut
 
-
-
     class Config:
-
         from_attributes = True
 
 
