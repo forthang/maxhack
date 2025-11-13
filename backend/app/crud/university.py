@@ -11,7 +11,7 @@ def get_leaderboard(db: Session) -> List[schemas.LeaderboardEntry]:
     )
     return [
         schemas.LeaderboardEntry(
-            university=schemas.UniversityOut.from_orm(uni),
+            university=schemas.UniversityOut.model_validate(uni),
             rank=idx,
         )
         for idx, uni in enumerate(universities, start=1)
@@ -21,14 +21,13 @@ def get_student_leaderboard(db: Session) -> list[schemas.StudentLeaderboardEntry
     """Return students ordered by XP descending with their rank."""
     students = (
         db.query(models.User)
-        .filter(models.User.role == models.UserRole.student)
         .order_by(models.User.xp.desc())
         .options(joinedload(models.User.group))
         .all()
     )
     return [
         schemas.StudentLeaderboardEntry(
-            user=schemas.UserOut.from_orm(student),
+            user=schemas.UserOut.model_validate(student),
             rank=idx,
         )
         for idx, student in enumerate(students, start=1)
@@ -39,7 +38,7 @@ def get_university(db: Session, university_id: int) -> Optional[schemas.Universi
     uni = db.query(models.University).filter(models.University.id == university_id).first()
     if uni is None:
         return None
-    return schemas.UniversityOut.from_orm(uni)
+    return schemas.UniversityOut.model_validate(uni)
 
 def get_university_details(db: Session, university_id: int) -> Optional[schemas.UniversityDetailOut]:
     """Return a university along with its nested structure of students."""
@@ -53,7 +52,7 @@ def get_university_details(db: Session, university_id: int) -> Optional[schemas.
     if uni is None:
         return None
 
-    return schemas.UniversityDetailOut.from_orm(uni)
+    return schemas.UniversityDetailOut.model_validate(uni)
 
 
 def get_all_universities_details(db: Session) -> List[schemas.UniversityDetailOut]:
@@ -65,5 +64,5 @@ def get_all_universities_details(db: Session) -> List[schemas.UniversityDetailOu
         .joinedload(models.Group.students)
     ).order_by(models.University.name).all()
 
-    return [schemas.UniversityDetailOut.from_orm(uni) for uni in universities]
+    return [schemas.UniversityDetailOut.model_validate(uni) for uni in universities]
 
