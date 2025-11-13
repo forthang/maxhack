@@ -2,6 +2,7 @@ import React, { useState, createContext, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import PageWrapper from './PageWrapper';
 import { useMaxApp } from '../../hooks/useMaxApp'; // Import the custom hook
+import { ThemeContext, UserContext } from '../../context/AppContext';
 
 import SchedulePage from '../../pages/SchedulePage';
 import LeaderboardPage from '../../pages/LeaderboardPage';
@@ -12,9 +13,6 @@ import EventDetailsPage from '../../pages/EventDetailsPage';
 import ScheduleItemDetailsPage from '../../pages/ScheduleItemDetailsPage';
 import UniversityDetailsPage from '../../pages/UniversityDetailsPage';
 import CourseDetailsPage from '../../pages/CourseDetailsPage';
-
-export const ThemeContext = createContext({ darkMode: false, toggleTheme: () => {} });
-export const UserContext = createContext({ currentUserId: 1, setCurrentUserId: (id: number) => {} });
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);

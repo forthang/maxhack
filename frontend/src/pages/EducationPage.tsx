@@ -56,7 +56,7 @@ const tracks: Track[] = [
 ];
 
 import CourseGraph, { CourseNode } from '../components/CourseGraph';
-import { UserContext } from '../components/layout/App';
+import { UserContext } from '../context/AppContext';
 
 const Education: React.FC = () => {
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null);

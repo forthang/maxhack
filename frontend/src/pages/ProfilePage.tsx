@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ThemeContext, UserContext } from '../components/layout/App';
+import { ThemeContext, UserContext } from '../context/AppContext';
 import StorePage from './StorePage';
 
 /**

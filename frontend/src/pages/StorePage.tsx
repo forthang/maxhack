@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserContext } from '../components/layout/App';
+import { UserContext } from '../context/AppContext';
 
 /**
  * Магазин позволяет пользователю обменивать накопленные монеты на виртуальные

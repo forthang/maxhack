@@ -6,7 +6,7 @@ import ClassCard from '../components/common/ClassCard';
 import EventCard from '../components/common/EventCard';
 import CreateEventForm from '../components/common/CreateEventForm';
 import UploadSchedule from '../components/common/UploadSchedule';
-import { UserContext } from '../components/layout/App';
+import { UserContext } from '../context/AppContext';
 import CreateClassForm from '../components/common/CreateClassForm';
 
 interface UnifiedItem {
