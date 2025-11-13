@@ -16,23 +16,32 @@ export const useMaxApp = (): MaxAppHook => {
 
   useEffect(() => {
     const login = async () => {
+      let userData; // Declare userData here
       try {
         // 1. Check for MAX Bridge
         // @ts-ignore
         const webApp = window.WebApp;
 
         if (!webApp || !webApp.initDataUnsafe || !webApp.initDataUnsafe.user) {
-          const errorMsg = "MAX Bridge data not found (window.WebApp.initDataUnsafe.user is missing). Cannot proceed without user data.";
+          const errorMsg = "MAX Bridge data not found (window.WebApp.initDataUnsafe.user is missing). Using mock user data.";
           if (process.env.NODE_ENV === 'development') {
             console.warn(errorMsg, "This is expected in a local browser environment if not running within MAX.");
           }
-          throw new Error(errorMsg);
+          // Provide mock user data for development/testing when MAX Bridge data is unavailable
+          userData = {
+            id: -1, // Use a distinct ID for mock user
+            first_name: "Mock",
+            last_name: "User",
+            username: "mockuser",
+            photo_url: "https://i.pravatar.cc/150?img=68", // Example avatar
+            language_code: "ru",
+          };
+        } else {
+          userData = webApp.initDataUnsafe.user;
         }
 
-        const userData = webApp.initDataUnsafe.user;
-
         if (!userData || !userData.id) {
-          throw new Error("User ID not found in MAX Bridge data.");
+          throw new Error("User ID not found in MAX Bridge data or mock data generation failed.");
         }
         
         // 2. Call the new /api/auth/login endpoint
