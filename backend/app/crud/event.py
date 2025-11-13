@@ -17,7 +17,7 @@ def get_events(db: Session, user_id: Optional[int] = None) -> List[schemas.Event
                 .first()
                 is not None
             )
-        event_out = schemas.EventOut.from_orm(event)
+        event_out = schemas.EventOut.model_validate(event)
         event_out = event_out.model_copy(update={"signup_count": signup_count, "signed_up": user_signed})
         result.append(event_out)
     return result
@@ -28,7 +28,7 @@ def create_event(db: Session, payload: schemas.EventBase, creator_id: Optional[i
     db.add(event)
     db.commit()
     db.refresh(event)
-    return schemas.EventOut.from_orm(event)
+    return schemas.EventOut.model_validate(event)
 
 def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Optional[schemas.EventOut]:
     """Update an existing event with the provided fields."""
@@ -40,7 +40,7 @@ def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Op
         setattr(event, key, value)
     db.commit()
     db.refresh(event)
-    return schemas.EventOut.from_orm(event)
+    return schemas.EventOut.model_validate(event)
 
 def signup_for_event(db: Session, event_id: int, user_id: int) -> bool:
     """Register a user for an event."""

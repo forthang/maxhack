@@ -24,8 +24,8 @@ def create_event_review(
     db_review = crud.review.create_event_review(db, review=review_create)
     
     # Populate user_name for the response
-    review_out = schemas.ReviewOut.from_orm(db_review)
-    review_out.user_name = user.name
+    review_out = schemas.ReviewOut.model_validate(db_review)
+    review_out.user_name = f"{user.first_name} {user.last_name}" if user.first_name or user.last_name else user.username
     return review_out
 
 @router.get("/events/{event_id}/reviews", response_model=List[schemas.ReviewOut])
@@ -37,8 +37,8 @@ def get_event_reviews(
     reviews_out = []
     for review in reviews:
         user = crud.user.get_user(db, user_id=review.user_id)
-        review_out = schemas.ReviewOut.from_orm(review)
-        review_out.user_name = user.name if user else "Unknown User"
+        review_out = schemas.ReviewOut.model_validate(review)
+        review_out.user_name = f"{user.first_name} {user.last_name}" if user and (user.first_name or user.last_name) else (user.username if user else "Unknown User")
         reviews_out.append(review_out)
     return reviews_out
 
@@ -58,8 +58,8 @@ def create_course_review(
     db_review = crud.review.create_course_review(db, review=review_create)
     
     # Populate user_name for the response
-    review_out = schemas.ReviewOut.from_orm(db_review)
-    review_out.user_name = user.name
+    review_out = schemas.ReviewOut.model_validate(db_review)
+    review_out.user_name = f"{user.first_name} {user.last_name}" if user.first_name or user.last_name else user.username
     return review_out
 
 @router.get("/courses/{course_id}/reviews", response_model=List[schemas.ReviewOut])
@@ -71,7 +71,7 @@ def get_course_reviews(
     reviews_out = []
     for review in reviews:
         user = crud.user.get_user(db, user_id=review.user_id)
-        review_out = schemas.ReviewOut.from_orm(review)
-        review_out.user_name = user.name if user else "Unknown User"
-        reviews_out.append(review_out)
+        review_out = schemas.ReviewOut.model_validate(review)
+        review_out.user_name = f"{user.first_name} {user.last_name}" if user and (user.first_name or user.last_name) else (user.username if user else "Unknown User")
+        reviews_out.append(reviews_out)
     return reviews_out

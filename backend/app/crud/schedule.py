@@ -9,7 +9,7 @@ def get_schedule(db: Session, user_id: int) -> List[schemas.ScheduleItemOut]:
         return []
 
     items = db.query(models.ScheduleItem).filter(models.ScheduleItem.group_id == user.group_id).all()
-    return [schemas.ScheduleItemOut.from_orm(item) for item in items]
+    return [schemas.ScheduleItemOut.model_validate(item) for item in items]
 
 def add_schedule_for_group(db: Session, group_id: int, schedule_items: List[schemas.ScheduleItemBase]) -> List[models.ScheduleItem]:
     """Adds multiple schedule items for a specific group."""

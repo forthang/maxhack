@@ -19,16 +19,17 @@ export const useMaxApp = (): MaxAppHook => {
       try {
         // 1. Check for MAX Bridge
         // @ts-ignore
-        if (!window.WebApp || !window.WebApp.initDataUnsafe || !window.WebApp.initDataUnsafe.user) {
-          const errorMsg = "MAX Bridge data not found. App cannot be initialized.";
+        const webApp = window.WebApp;
+
+        if (!webApp || !webApp.initDataUnsafe || !webApp.initDataUnsafe.user) {
+          const errorMsg = "MAX Bridge data not found (window.WebApp.initDataUnsafe.user is missing).";
           if (process.env.NODE_ENV === 'development') {
             console.warn(errorMsg, "This is expected in a local browser environment.");
           }
           throw new Error(errorMsg);
         }
 
-        // @ts-ignore
-        const userData = window.WebApp.initDataUnsafe.user;
+        const userData = webApp.initDataUnsafe.user;
 
         if (!userData || !userData.id) {
           throw new Error("User ID not found in MAX Bridge data.");
@@ -42,7 +43,7 @@ export const useMaxApp = (): MaxAppHook => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json().catch(() => ({ detail: "Failed to parse error JSON." }));
           throw new Error(errorData.detail || `Login failed with status: ${response.status}`);
         }
 

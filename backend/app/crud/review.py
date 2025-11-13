@@ -15,8 +15,9 @@ def create_event_review(db: Session, review: schemas.EventReviewCreate) -> model
     db.refresh(db_review)
     return db_review
 
-def get_event_reviews(db: Session, event_id: int) -> List[models.EventReview]:
-    return db.query(models.EventReview).filter(models.EventReview.event_id == event_id).all()
+def get_event_reviews(db: Session, event_id: int) -> List[schemas.ReviewOut]:
+    reviews = db.query(models.EventReview).filter(models.EventReview.event_id == event_id).all()
+    return [schemas.ReviewOut.model_validate(review) for review in reviews]
 
 def create_course_review(db: Session, review: schemas.CourseReviewCreate) -> models.CourseReview:
     db_review = models.CourseReview(
@@ -30,5 +31,6 @@ def create_course_review(db: Session, review: schemas.CourseReviewCreate) -> mod
     db.refresh(db_review)
     return db_review
 
-def get_course_reviews(db: Session, course_id: str) -> List[models.CourseReview]:
-    return db.query(models.CourseReview).filter(models.CourseReview.course_id == course_id).all()
+def get_course_reviews(db: Session, course_id: str) -> List[schemas.ReviewOut]:
+    reviews = db.query(models.CourseReview).filter(models.CourseReview.course_id == course_id).all()
+    return [schemas.ReviewOut.model_validate(review) for review in reviews]

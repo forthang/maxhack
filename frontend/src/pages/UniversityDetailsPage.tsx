@@ -4,7 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 // --- Interfaces for the new nested structure ---
 interface Student {
   id: number;
-  name: string;
+  first_name: string | null;
+  last_name: string | null;
   xp: number;
   coins: number;
 }
@@ -98,7 +99,7 @@ const UniversityDetails: React.FC = () => {
                         <ul className="space-y-2 text-sm">
                             {group.students.map(student => (
                               <li key={student.id} className="flex justify-between items-center p-1">
-                                <span>{student.name}</span>
+                                <span>{student.first_name} {student.last_name}</span>
                                 <span className="text-gray-500 dark:text-gray-400">{student.xp} XP</span>
                               </li>
                             ))}
@@ -132,7 +133,7 @@ const UniversityDetails: React.FC = () => {
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-semibold">
                   {index + 1}
                 </div>
-                <p className="font-medium text-gray-700 dark:text-gray-200">{student.name}</p>
+                <p className="font-medium text-gray-700 dark:text-gray-200">{student.first_name} {student.last_name}</p>
               </div>
               <span className="text-gray-800 dark:text-gray-300 font-semibold">{student.xp} XP</span>
             </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import EventCard from '../components/common/EventCard';
 import { useNavigate } from 'react-router-dom';
-import { UserContext } from '../components/layout/App';
+import { UserContext } from '../context/AppContext';
 
 interface EventItem {
   id: number;
@@ -19,12 +19,12 @@ const Events: React.FC = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { currentUserId } = useContext(UserContext);
+  const { currentUser } = useContext(UserContext);
 
   const loadEvents = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`/api/events?user_id=${currentUserId}`);
+      const resp = await fetch(`/api/events?user_id=${currentUser?.id}`);
       if (resp.ok) {
         let data: EventItem[] = await resp.json();
 
@@ -47,8 +47,10 @@ const Events: React.FC = () => {
   };
 
   useEffect(() => {
-    loadEvents();
-  }, [currentUserId]);
+    if (currentUser?.id) {
+      loadEvents();
+    }
+  }, [currentUser]);
 
   return (
     <div className="p-4">

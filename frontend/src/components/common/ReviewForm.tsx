@@ -12,11 +12,11 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ entityId, entityType, onReviewS
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { currentUserId } = useContext(UserContext);
+  const { currentUser } = useContext(UserContext);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUserId) {
+    if (!currentUser?.id) {
       setError("User not logged in.");
       return;
     }
@@ -29,7 +29,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ entityId, entityType, onReviewS
     setError(null);
 
     const payload: any = {
-      user_id: currentUserId,
+      user_id: currentUser.id,
       rating: rating,
       comment: comment,
     };
