@@ -67,19 +67,26 @@ const App: React.FC = () => {
         <div className={darkMode ? 'dark' : ''}>
           <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 flex flex-col font-sans">
             <main className="flex-grow pb-24">
-                <Routes location={location} key={location.pathname}>
-                  <Route path="/" element={<PageWrapper><SchedulePage /></PageWrapper>} />
-                  <Route path="/education" element={<PageWrapper><EducationPage /></PageWrapper>} />
-                  <Route path="/leaderboard" element={<PageWrapper><LeaderboardPage /></PageWrapper>} />
-                  <Route path="/profile" element={<PageWrapper><ProfilePage /></PageWrapper>} />
-                  <Route path="/event/:id" element={<PageWrapper><EventDetailsPage /></PageWrapper>} />
-                  <Route path="/schedule/:id" element={<PageWrapper><ScheduleItemDetailsPage /></PageWrapper>} />
-                  <Route path="/university/:id" element={<PageWrapper><UniversityDetailsPage /></PageWrapper>} />
-                  <Route path="/course/:id" element={<PageWrapper><CourseDetailsPage /></PageWrapper>} />
-                  <Route path="/store" element={<PageWrapper><StorePage /></PageWrapper>} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-            </main>
+    <Routes location={location} key={location.pathname}>
+      {/* Temporarily disabling all routes except the leaderboard to isolate the error */}
+      <Route path="/" element={<PageWrapper><LeaderboardPage /></PageWrapper>} />
+      <Route path="/leaderboard" element={<PageWrapper><LeaderboardPage /></PageWrapper>} />
+      
+      {/* 
+      <Route path="/" element={<PageWrapper><SchedulePage /></PageWrapper>} />
+      <Route path="/education" element={<PageWrapper><EducationPage /></PageWrapper>} />
+      <Route path="/leaderboard" element={<PageWrapper><LeaderboardPage /></PageWrapper>} />
+      <Route path="/profile" element={<PageWrapper><ProfilePage /></PageWrapper>} />
+      <Route path="/event/:id" element={<PageWrapper><EventDetailsPage /></PageWrapper>} />
+      <Route path="/schedule/:id" element={<PageWrapper><ScheduleItemDetailsPage /></PageWrapper>} />
+      <Route path="/university/:id" element={<PageWrapper><UniversityDetailsPage /></PageWrapper>} />
+      <Route path="/course/:id" element={<PageWrapper><CourseDetailsPage /></PageWrapper>} />
+      <Route path="/store" element={<PageWrapper><StorePage /></PageWrapper>} />
+      */}
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+</main>
             <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-lg border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-around shadow-t-2xl">
               <NavLink to="/" label="Расписание" icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>} />
               <NavLink to="/education" label="Обучение" icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0" /></svg>} />
