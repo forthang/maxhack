@@ -17,8 +17,8 @@ def init_db() -> None:
     """
     from .. import models
 
-    # Drop and recreate tables for a clean slate. In production, use migrations.
-    Base.metadata.drop_all(bind=engine)
+    # Tables should be created with Alembic migrations
+    # But for this project, we'll just use create_all
     Base.metadata.create_all(bind=engine)
 
     # Lightweight migrations for development

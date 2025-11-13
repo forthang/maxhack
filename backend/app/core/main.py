@@ -65,12 +65,24 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    """Initialize the database when the application starts."""
+from app.db.init_db import init_db
+from app.db.seed_db import seed_db
+
+# Create a lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     logger.info("Starting up and initializing database...")
     init_db()
-    logger.info("Database initialization complete.")
+    seed_db()
+    yield
+    logger.info("Shutting down...")
+
+app = FastAPI(
+    title="MaxHack API",
+    description="API for the MaxHack project",
+    version="0.1.0",
+    lifespan=lifespan
+)
 
 # Mount individual routers from the api package. Splitting the routes
 # into separate modules clarifies their responsibilities and makes the
