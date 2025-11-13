@@ -74,7 +74,7 @@ const Leaderboard: React.FC = () => {
     setLoading(true);
     try {
       const fetchPromises = [
-        fetch('/api/leaderboard/'),
+        fetch('/api/leaderboard'),
         fetch('/api/leaderboard/students'),
       ];
       if (showJoinGroup) {
