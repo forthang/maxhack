@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { UserContext } from '../components/layout/App';
+import { UserContext } from '../context/AppContext';
 import ReviewForm from '../components/common/ReviewForm'; // Import ReviewForm
 import ReviewList from '../components/common/ReviewList'; // Import ReviewList
 import { ReviewOut } from '../types/review'; // Import ReviewOut type
