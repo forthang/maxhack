@@ -37,29 +37,30 @@ class UserRole(str, Enum):
 class User(Base):
     """System user participating in the application.
 
-    The system intentionally stores only minimal personal information because
-    authentication is handled through invitation links rather than accounts.
-    In this version the user also accumulates experience points and coins
-    for completing courses and participating in events. Additional lookup
-    tables record completed courses, purchased items and event signups.
+    The user is identified by their MAX platform ID. The record stores
+    profile information provided by MAX and tracks their progress and
+    affiliation within the university structure.
     """
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    role = Column(PgEnum(UserRole), nullable=False)
-    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
-    achievements = Column(String, nullable=True)  # comma‑separated achievements
-    progress = Column(Integer, default=0)  # percentage progress for simplicity
+    id = Column(Integer, primary_key=True, index=True, autoincrement=False) # Use MAX ID
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    username = Column(String, nullable=True)
+    photo_url = Column(String, nullable=True)
+    language_code = Column(String, nullable=True)
 
-    # Additional gamified metrics. Experience points (xp) are awarded for
-    # completing courses, and coins are earned through events or purchases.
+    # Affiliation - nullable because user is an applicant first
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
+    university_id = Column(Integer, ForeignKey("universities.id"), nullable=True)
+
+    # Gamification metrics
     xp = Column(Integer, default=0)
     coins = Column(Integer, default=0)
 
     group = relationship("Group", back_populates="students")
-    # New relationships for extended functionality
+    university = relationship("University")
     completed_courses = relationship("CompletedCourse", back_populates="user")
     purchases = relationship("PurchasedItem", back_populates="user")
     event_signups = relationship("EventSignup", back_populates="user")

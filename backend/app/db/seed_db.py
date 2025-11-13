@@ -44,10 +44,12 @@ def seed_db():
 
                     students = []
                     for l in range(1, 6): # 5 Students
+                        # Create a unique ID for seed users to avoid conflict with real MAX IDs
+                        user_id = int(f"999{uni.id}{spec.id}{course.id}{l}") 
                         user = User(
-                            name=f"Студент {l} (Группа {group.name})",
-                            email=f"student_{uni.id}_{spec.id}_{course.id}_{l}@example.com",
-                            hashed_password="password", # In a real app, hash this
+                            id=user_id,
+                            first_name=f"Студент {l}",
+                            last_name=f"(Группа {group.id})",
                             xp=0,
                             coins=0,
                             group_id=group.id,

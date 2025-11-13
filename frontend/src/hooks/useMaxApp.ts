@@ -1,89 +1,63 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+// src/hooks/useMaxApp.ts
+import { useState, useEffect, useContext } from 'react';
+import { UserContext } from '../context/AppContext';
+import { User } from '../types/user';
 
-// This is a global object provided by the MAX Bridge script.
-// We declare it here to inform TypeScript about its existence.
-declare global {
-  interface Window {
-    WebApp?: any;
-  }
+interface MaxAppHook {
+  currentUser: User | null;
+  isValidating: boolean;
+  isValidated: boolean;
+  validationError: string | null;
 }
 
-export const useMaxApp = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [isValidated, setIsValidated] = useState(false);
+export const useMaxApp = (): MaxAppHook => {
+  const { currentUser, setCurrentUser } = useContext(UserContext);
   const [isValidating, setIsValidating] = useState(true);
+  const [isValidated, setIsValidated] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<number>(1); // Default to 1 for browser mode
-
-  const validateData = useCallback(async (webApp: any) => {
-    setIsValidating(true);
-    setValidationError(null);
-    try {
-      const resp = await fetch(`/api/auth/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ init_data: webApp.initData }),
-      });
-
-      if (resp.ok) {
-        setIsValidated(true);
-        if (webApp.initDataUnsafe && webApp.initDataUnsafe.user) {
-          setUserId(webApp.initDataUnsafe.user.id);
-        }
-      } else {
-        const err = await resp.json();
-        setValidationError(err.detail || 'Validation failed');
-        setIsValidated(false);
-      }
-    } catch (e) {
-      setValidationError('Network error during validation');
-      setIsValidated(false);
-    } finally {
-      setIsValidating(false);
-    }
-  }, []);
 
   useEffect(() => {
-    const webApp = window.WebApp;
-    if (!webApp) {
-      console.log("MAX WebApp not found, running in browser mode.");
-      setIsValidating(false);
-      setIsValidated(true); // In browser mode, we assume it's "valid" for dev purposes
-      return;
-    }
+    const validate = async () => {
+      try {
+        // Ensure MAX Bridge is loaded
+        if (!window.WebApp || !window.WebApp.initData) {
+          // For local development, create a mock user
+          if (process.env.NODE_ENV === 'development') {
+            console.warn("MAX Bridge not found. Using mock user for development.");
+            // Attempt to get a user from a mock API or use a static mock
+            // For now, we'll just fail validation to show the error state
+            throw new Error("MAX Bridge not found. Cannot validate.");
+          } else {
+            throw new Error("MAX Bridge not found. Cannot validate.");
+          }
+        }
 
-    // 1. Validate data
-    validateData(webApp);
-    
-    // 2. Inform MAX that the app is ready
-    webApp.ready();
+        const webApp = window.WebApp;
+        
+        const response = await fetch('/api/auth/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData: webApp.initData }),
+        });
 
-    // 3. Back button management
-    const backButton = webApp.BackButton;
-    const handleBackClick = () => navigate(-1);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || `Validation failed with status: ${response.status}`);
+        }
 
-    if (location.pathname !== '/') {
-      backButton.show();
-      backButton.onClick(handleBackClick);
-    } else {
-      backButton.hide();
-    }
+        const user: User = await response.json();
+        setCurrentUser(user);
+        setIsValidated(true);
 
-    // Cleanup listener
-    return () => {
-      if (webApp && webApp.BackButton) {
-        webApp.BackButton.offClick(handleBackClick);
+      } catch (error: any) {
+        setValidationError(error.message);
+      } finally {
+        setIsValidating(false);
       }
     };
-  }, [location, navigate, validateData]);
 
-  return {
-    userId,
-    isValidating,
-    isValidated,
-    validationError,
-    isMaxApp: !!window.WebApp,
-  };
+    validate();
+  }, [setCurrentUser]); // Dependency array ensures this runs only once on mount
+
+  return { currentUser, isValidating, isValidated, validationError };
 };

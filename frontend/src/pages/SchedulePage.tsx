@@ -1,8 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-
-import ClassCard from '../components/common/ClassCard';
 import EventCard from '../components/common/EventCard';
 import CreateEventForm from '../components/common/CreateEventForm';
 import UploadSchedule from '../components/common/UploadSchedule';
@@ -22,11 +19,6 @@ interface UnifiedItem {
   auditorium?: string;
 }
 
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1 }
-};
-
 const Schedule: React.FC = () => {
   const [items, setItems] = useState<UnifiedItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,19 +29,20 @@ const Schedule: React.FC = () => {
   const [view, setView] = useState<'schedule' | 'events' | 'my-events'>('schedule');
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-  const { currentUserId } = useContext(UserContext);
+  const { currentUser } = useContext(UserContext);
 
   const loadData = async () => {
+    if (!currentUser?.id) return; // Don't load if no user
+
     setLoading(true);
     try {
       const [scheduleResp, eventsResp] = await Promise.all([
-        fetch(`/api/schedule?user_id=${currentUserId}`),
-        fetch(`/api/events?user_id=${currentUserId}`),
+        fetch(`/api/schedule?user_id=${currentUser.id}`),
+        fetch(`/api/events?user_id=${currentUser.id}`),
       ]);
       let unified: UnifiedItem[] = [];
       if (scheduleResp.ok) {
         const scheduleData: any[] = await scheduleResp.json();
-        console.log("Raw schedule data:", scheduleData); // Debugging line
         scheduleData.forEach((item) => {
           unified.push({
             id: item.id,
@@ -65,12 +58,11 @@ const Schedule: React.FC = () => {
       }
       if (eventsResp.ok) {
         const eventsData: any[] = await eventsResp.json();
-        console.log("Raw events data:", eventsData); // Debugging line
         eventsData.forEach((ev) => {
           const start = new Date(ev.event_time);
           const duration = ev.duration_hours ?? 2;
           const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
-          const eventItem = {
+          unified.push({
             id: ev.id + 100000,
             start,
             end,
@@ -81,15 +73,12 @@ const Schedule: React.FC = () => {
             signed_up: ev.signed_up,
             sourceId: ev.id,
             auditorium: ev.auditorium,
-          };
-          unified.push(eventItem);
-          console.log(`Event: ${eventItem.title}, Signed Up: ${eventItem.signed_up}`); // Debugging line
+          });
         });
       }
 
       const now = new Date();
-      unified = unified.filter(item => item.end > now); // Filter out expired events
-
+      unified = unified.filter(item => item.end > now);
       setItems(unified);
     } catch (e) {
       console.error(e);
@@ -99,8 +88,10 @@ const Schedule: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, [currentUserId]);
+    if (currentUser?.id) {
+      loadData();
+    }
+  }, [currentUser]);
 
   const handleEventCreated = async () => {
     setShowCreateForm(false);
@@ -132,7 +123,14 @@ const Schedule: React.FC = () => {
   };
 
   const renderScheduleGrid = () => {
-
+    if (!currentUser?.group_id) {
+      return (
+        <div className="text-center p-8">
+          <p className="text-lg text-gray-600 dark:text-gray-400">У вас пока нет расписания.</p>
+          <p className="text-md text-gray-500 dark:text-gray-500">Пожалуйста, выберите ВУЗ и группу, чтобы увидеть свое расписание.</p>
+        </div>
+      )
+    }
 
     const itemsForGrid = items
       .filter(item => {
@@ -143,49 +141,24 @@ const Schedule: React.FC = () => {
       })
       .map((item) => {
         const dayIndex = (item.start.getDay() + 6) % 7;
-        const startHour = item.start.getHours();
-        const startMinute = item.start.getMinutes();
-        let span = (item.end.getTime() - item.start.getTime()) / (60 * 60 * 1000);
-        if (span < 1) span = 1;
-
-        // Calculate visible start and end times based on 7 AM schedule start
         const scheduleVisibleStartHour = 7;
-        const scheduleVisibleEndHour = 24; // Represents 1 AM the next day for 18 hours of display
-
         let itemVisibleStart = new Date(item.start);
-        let itemVisibleEnd = new Date(item.end);
-
-        // If item starts before visible schedule, adjust its start to visible start
         if (itemVisibleStart.getHours() < scheduleVisibleStartHour) {
           itemVisibleStart.setHours(scheduleVisibleStartHour, 0, 0, 0);
         }
-
-        // If item ends after visible schedule, adjust its end to visible end
-        if (itemVisibleEnd.getHours() >= scheduleVisibleEndHour) {
-          itemVisibleEnd.setHours(scheduleVisibleEndHour, 0, 0, 0);
-        }
-
-        // Recalculate span for visible portion
-        let visibleSpan = (itemVisibleEnd.getTime() - itemVisibleStart.getTime()) / (60 * 60 * 1000);
-        if (visibleSpan < 0) visibleSpan = 0; // Ensure non-negative span
-
-        const visibleStartHour = itemVisibleStart.getHours();
-        const visibleStartMinute = itemVisibleStart.getMinutes();
-
-        // Calculate top position relative to 7 AM start
-        const topPosition = 40 + (visibleStartHour - scheduleVisibleStartHour) * 60 + visibleStartMinute;
+        let visibleSpan = (item.end.getTime() - itemVisibleStart.getTime()) / (60 * 60 * 1000);
+        if (visibleSpan < 0) visibleSpan = 0;
+        const topPosition = 40 + (itemVisibleStart.getHours() - scheduleVisibleStartHour) * 60 + itemVisibleStart.getMinutes();
         const heightPosition = visibleSpan * 60;
-
-        return { ...item, dayIndex, startHour, startMinute, span, topPosition, heightPosition };
+        return { ...item, dayIndex, topPosition, heightPosition };
       });
-
 
     return (
       <div className="relative overflow-x-auto rounded-lg shadow-inner">
         <div className="min-w-[900px] relative">
           <div
             className="grid text-sm"
-            style={{ gridTemplateColumns: '80px repeat(7, 1fr)', gridTemplateRows: `40px repeat(18, 60px)` }} // Changed to 18 rows for 7 AM to 1 AM
+            style={{ gridTemplateColumns: '80px repeat(7, 1fr)', gridTemplateRows: `40px repeat(18, 60px)` }}
           >
             <div className="sticky left-0 z-20 bg-white dark:bg-gray-900 h-10 flex items-center justify-center border-b border-r border-gray-200 dark:border-gray-700"></div>
             {days.map((day, idx) => (
@@ -193,8 +166,8 @@ const Schedule: React.FC = () => {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{formatDay(day)}</span>
               </div>
             ))}
-            {Array.from({ length: 18 }).map((_, hourOffset) => { // Changed to 18 hours
-              const hour = (7 + hourOffset) % 24; // Start from 7 AM
+            {Array.from({ length: 18 }).map((_, hourOffset) => {
+              const hour = (7 + hourOffset) % 24;
               return (
                 <React.Fragment key={hour}>
                   <div className="sticky left-0 z-10 bg-white dark:bg-gray-900 h-[60px] flex items-start justify-center pt-2 border-r border-b border-gray-200 dark:border-gray-700">
@@ -215,9 +188,9 @@ const Schedule: React.FC = () => {
                 style={{
                   position: 'absolute',
                   left: `calc(80px + (100% - 80px) * ${item.dayIndex} / 7)`,
-                  top: `${item.topPosition}px`, // Use calculated topPosition
+                  top: `${item.topPosition}px`,
                   width: 'calc((100% - 80px) / 7)',
-                  height: `${item.heightPosition}px`, // Use calculated heightPosition
+                  height: `${item.heightPosition}px`,
                   backgroundColor: item.type === 'event' ? 'rgba(99, 102, 241, 0.9)' : 'rgba(16, 185, 129, 0.9)',
                   color: 'white',
                 }}
@@ -252,9 +225,7 @@ const Schedule: React.FC = () => {
           className="w-full px-3 py-2 mb-4 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
         />
           {filteredEvents.map(item => (
-            <div
-              key={item.id}
-            >
+            <div key={item.id}>
               <EventCard
                 start={item.start}
                 end={item.end}
@@ -263,22 +234,22 @@ const Schedule: React.FC = () => {
                 auditorium={item.auditorium}
                 onDetails={() => navigate(`/event/${item.sourceId}`)}
                 signedUp={item.signed_up}
-                onSignup={!item.signed_up
+                onSignup={!item.signed_up && currentUser?.id
                     ? async () => {
                         const resp = await fetch(`/api/events/${item.sourceId}/signup`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ user_id: currentUserId }),
+                          body: JSON.stringify({ user_id: currentUser.id }),
                         });
                         if (resp.ok) await loadData();
                       }
                     : undefined}
-                onUnsubscribe={item.signed_up
+                onUnsubscribe={item.signed_up && currentUser?.id
                     ? async () => {
                         const resp = await fetch(`/api/events/${item.sourceId}/unsubscribe`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ user_id: currentUserId }),
+                          body: JSON.stringify({ user_id: currentUser.id }),
                         });
                         if (resp.ok) await loadData();
                       }
@@ -291,9 +262,7 @@ const Schedule: React.FC = () => {
   }
 
   const renderMyEvents = () => (
-    <div
-        className="space-y-4 pb-20"
-    >
+    <div className="space-y-4 pb-20">
       <div className="flex space-x-2">
         <button onClick={() => { setShowCreateForm(p => !p); setShowUploadForm(false); setShowCreateClassForm(false); }} className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm">
           {showCreateForm ? 'Отмена' : 'Создать событие'}
@@ -311,20 +280,18 @@ const Schedule: React.FC = () => {
       
       <h3 className="text-xl font-semibold pt-4">Мои события</h3>
           {items.filter(item => item.type === 'event' && item.signed_up).length > 0 ? items.filter(item => item.type === 'event' && item.signed_up).map(item => (
-            <div
-              key={item.id}
-            >
+            <div key={item.id}>
             <EventCard
               {...item}
               onDetails={() => navigate(`/event/${item.sourceId}`)}
-              onUnsubscribe={async () => {
+              onUnsubscribe={currentUser?.id ? async () => {
                 const resp = await fetch(`/api/events/${item.sourceId}/unsubscribe`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ user_id: currentUserId }),
+                  body: JSON.stringify({ user_id: currentUser.id }),
                 });
                 if (resp.ok) await loadData();
-              }}
+              } : undefined}
             />
             </div>
           )) : <p className="text-gray-500">Вы не записаны на события.</p>}

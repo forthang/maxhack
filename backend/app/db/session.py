@@ -26,3 +26,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Base class for declarative models. All ORM models should inherit from this
 # class.
 Base = declarative_base()
+
+# Dependency to get a DB session.
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
