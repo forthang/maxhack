@@ -479,6 +479,14 @@ class JoinGroupPayload(BaseModel):
     user_id: int
     group_id: int
 
+class UserLoginData(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    photo_url: Optional[str] = None
+    language_code: Optional[str] = None
+
 class ReviewBase(BaseModel):
     rating: int = Field(..., ge=1, le=5, description="Оценка от 1 до 5")
     comment: Optional[str] = Field(None, max_length=500, description="Текст отзыва")

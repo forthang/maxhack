@@ -20,11 +20,43 @@ def get_profile(db: Session, user_id: int) -> Optional[schemas.ProfileOut]:
     if user is None:
         return None
 
-    profile_data = schemas.ProfileOut.from_orm(user)
+    # This is a workaround to ensure from_orm works as expected with nested models
+    profile_data = schemas.ProfileOut.model_validate(user)
     if user.group and user.group.course and user.group.course.specialization and user.group.course.specialization.university:
-        profile_data.university = schemas.UniversityOut.from_orm(user.group.course.specialization.university)
+        profile_data.university = schemas.UniversityOut.model_validate(user.group.course.specialization.university)
 
     return profile_data
+
+def login_user(db: Session, user_data: schemas.UserLoginData) -> schemas.ProfileOut:
+    """Finds a user by ID and updates their info, or creates them if they don't exist."""
+    user = db.query(models.User).filter(models.User.id == user_data.id).first()
+    if user:
+        # Update existing user
+        user.first_name = user_data.first_name
+        user.last_name = user_data.last_name
+        user.username = user_data.username
+        user.photo_url = user_data.photo_url
+    else:
+        # Create new user
+        user = models.User(
+            id=user_data.id,
+            first_name=user_data.first_name,
+            last_name=user_data.last_name,
+            username=user_data.username,
+            photo_url=user_data.photo_url,
+            language_code=user_data.language_code,
+            group_id=None,
+            university_id=None,
+            xp=0,
+            coins=0
+        )
+        db.add(user)
+    
+    db.commit()
+    db.refresh(user)
+    
+    return get_profile(db, user.id)
+
 
 def complete_course(db: Session, user_id: int, course_id: str, xp: int, coins: int) -> schemas.ProfileOut:
     """Mark a course as completed for a user, awarding XP and coins."""

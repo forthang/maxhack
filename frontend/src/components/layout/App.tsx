@@ -25,15 +25,24 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   const { 
-    currentUser: validatedUser, 
-    isValidating, 
-    isValidated, 
-    validationError 
+    currentUser: userFromHook, 
+    isLoading, 
+    error 
   } = useMaxApp();
+
+  // When the hook provides the user, set it in our state.
+  // This seems redundant, but it's how the original structure was set up.
+  // We'll keep it but bind the context to the direct value from the hook.
+  useEffect(() => {
+    if (userFromHook) {
+      setCurrentUser(userFromHook);
+    }
+  }, [userFromHook]);
+
 
   // Memoize context values
   const themeContextValue = useMemo(() => ({ darkMode, toggleTheme: () => setDarkMode(p => !p) }), [darkMode]);
-  const userContextValue = useMemo(() => ({ currentUser: validatedUser, setCurrentUser }), [validatedUser]);
+  const userContextValue = useMemo(() => ({ currentUser: userFromHook, setCurrentUser }), [userFromHook]);
 
   const NavLink: React.FC<{ to: string; label: string; icon: React.ReactNode }> = ({ to, label, icon }) => {
     const isActive = location.pathname === to;
@@ -48,20 +57,20 @@ const App: React.FC = () => {
   };
 
   // --- Loading and Error States ---
-  if (isValidating) {
-    return <div className="flex items-center justify-center min-h-screen bg-neutral-100 dark:bg-neutral-900">Загрузка и валидация...</div>;
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen bg-neutral-100 dark:bg-neutral-900">Загрузка приложения...</div>;
   }
 
-  if (validationError) {
-    return <div className="flex items-center justify-center min-h-screen bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 text-center">Ошибка валидации: {validationError}</div>;
+  if (error) {
+    return <div className="flex items-center justify-center min-h-screen bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 text-center">Ошибка: {error}</div>;
   }
 
-  if (!isValidated || !validatedUser) {
-    return <div className="flex items-center justify-center min-h-screen bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Не удалось проверить подлинность приложения.</div>;
+  if (!userFromHook) {
+    return <div className="flex items-center justify-center min-h-screen bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Не удалось получить данные пользователя.</div>;
   }
 
   // --- Applicant Modal ---
-  const isApplicant = validatedUser && !validatedUser.group_id;
+  const isApplicant = userFromHook && !userFromHook.group_id;
 
   return (
     <ThemeContext.Provider value={themeContextValue}>

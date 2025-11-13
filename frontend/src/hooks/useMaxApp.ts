@@ -5,59 +5,65 @@ import { User } from '../types/user';
 
 interface MaxAppHook {
   currentUser: User | null;
-  isValidating: boolean;
-  isValidated: boolean;
-  validationError: string | null;
+  isLoading: boolean;
+  error: string | null;
 }
 
 export const useMaxApp = (): MaxAppHook => {
   const { currentUser, setCurrentUser } = useContext(UserContext);
-  const [isValidating, setIsValidating] = useState(true);
-  const [isValidated, setIsValidated] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const validate = async () => {
+    const login = async () => {
       try {
-        // Ensure MAX Bridge is loaded
-        if (!window.WebApp || !window.WebApp.initData) {
-          // For local development, create a mock user
+        // 1. Check for MAX Bridge
+        // @ts-ignore
+        if (!window.WebApp || !window.WebApp.initDataUnsafe || !window.WebApp.initDataUnsafe.user) {
+          const errorMsg = "MAX Bridge data not found. App cannot be initialized.";
           if (process.env.NODE_ENV === 'development') {
-            console.warn("MAX Bridge not found. Using mock user for development.");
-            // Attempt to get a user from a mock API or use a static mock
-            // For now, we'll just fail validation to show the error state
-            throw new Error("MAX Bridge not found. Cannot validate.");
-          } else {
-            throw new Error("MAX Bridge not found. Cannot validate.");
+            console.warn(errorMsg, "This is expected in a local browser environment.");
           }
+          throw new Error(errorMsg);
         }
 
-        const webApp = window.WebApp;
+        // @ts-ignore
+        const userData = window.WebApp.initDataUnsafe.user;
+
+        if (!userData || !userData.id) {
+          throw new Error("User ID not found in MAX Bridge data.");
+        }
         
-        const response = await fetch('/api/auth/validate', {
+        // 2. Call the new /api/auth/login endpoint
+        const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ initData: webApp.initData }),
+          body: JSON.stringify(userData),
         });
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.detail || `Validation failed with status: ${response.status}`);
+          throw new Error(errorData.detail || `Login failed with status: ${response.status}`);
         }
 
-        const user: User = await response.json();
-        setCurrentUser(user);
-        setIsValidated(true);
+        // 3. Set user context
+        const userProfile: User = await response.json();
+        setCurrentUser(userProfile);
 
-      } catch (error: any) {
-        setValidationError(error.message);
+      } catch (err: any) {
+        setError(err.message);
       } finally {
-        setIsValidating(false);
+        setIsLoading(false);
       }
     };
 
-    validate();
-  }, [setCurrentUser]); // Dependency array ensures this runs only once on mount
+    // Only run login if there's no user in the context yet
+    if (!currentUser) {
+      login();
+    } else {
+      setIsLoading(false);
+    }
+  }, [currentUser, setCurrentUser]);
 
-  return { currentUser, isValidating, isValidated, validationError };
+  return { currentUser, isLoading, error };
 };
