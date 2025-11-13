@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { UserContext } from '../components/layout/App';
+import { UserContext } from '../context/AppContext';
 
 interface ClassData {
   id: number;
