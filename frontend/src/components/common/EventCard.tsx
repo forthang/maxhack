@@ -54,47 +54,55 @@ const EventCard: React.FC<EventCardProps> = ({
   signedUp,
 }) => {
   return (
-    <div className="fade-in bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
-      <p className="font-medium text-gray-700 dark:text-gray-200">
-        {start.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}
-        {' — '}
-        {end.toLocaleTimeString('ru-RU', { timeStyle: 'short' })}
-      </p>
-      <p className="mt-1 font-semibold text-gray-800 dark:text-gray-300">{title}</p>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{description}</p>
-      {auditorium && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Аудитория: {auditorium}</p>
-      )}
-      <div className="mt-2 flex space-x-2 items-center">
-        {onDetails && (
-          <button
-            onClick={onDetails}
-            className="text-blue-600 dark:text-blue-400 text-sm underline"
-          >
-            Подробнее
-          </button>
-        )}
-        {/* Показываем кнопку записи или отписки в зависимости от signedUp */}
-        {!signedUp && onSignup && (
-          <button
-            onClick={async () => {
-              await onSignup?.();
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs"
-          >
-            Записаться
-          </button>
-        )}
-        {signedUp && onUnsubscribe && (
-          <button
-            onClick={async () => {
-              await onUnsubscribe?.();
-            }}
-            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs"
-          >
-            Отписаться
-          </button>
-        )}
+    <div className="fade-in bg-white dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 shadow-sm hover:shadow-lg transition-shadow duration-300 flex space-x-4 items-start">
+      <div className="flex-shrink-0 w-12 h-12 bg-brand/10 text-brand rounded-lg flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <div className="flex-grow">
+        <p className="font-semibold text-neutral-800 dark:text-neutral-100">{title}</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{description}</p>
+        <div className="text-xs text-neutral-500 mt-2 space-y-1">
+          <p>
+            {start.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}
+            {' — '}
+            {end.toLocaleTimeString('ru-RU', { timeStyle: 'short' })}
+          </p>
+          {auditorium && (
+            <p>Аудитория: {auditorium}</p>
+          )}
+        </div>
+        <div className="mt-3 flex space-x-2 items-center">
+          {onDetails && (
+            <button
+              onClick={onDetails}
+              className="text-brand dark:text-brand-light text-sm font-medium hover:underline"
+            >
+              Подробнее
+            </button>
+          )}
+          {!signedUp && onSignup && (
+            <button
+              onClick={async () => {
+                await onSignup?.();
+              }}
+              className="bg-brand hover:bg-brand-dark text-white px-3 py-1 rounded-md text-xs font-semibold transition-colors"
+            >
+              Записаться
+            </button>
+          )}
+          {signedUp && onUnsubscribe && (
+            <button
+              onClick={async () => {
+                await onUnsubscribe?.();
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-xs font-semibold transition-colors"
+            >
+              Отписаться
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

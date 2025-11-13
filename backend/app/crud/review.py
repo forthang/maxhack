@@ -1,0 +1,34 @@
+from sqlalchemy.orm import Session
+from typing import List, Optional
+
+from .. import models, schemas
+
+def create_event_review(db: Session, review: schemas.EventReviewCreate) -> models.EventReview:
+    db_review = models.EventReview(
+        event_id=review.event_id,
+        user_id=review.user_id,
+        rating=review.rating,
+        comment=review.comment
+    )
+    db.add(db_review)
+    db.commit()
+    db.refresh(db_review)
+    return db_review
+
+def get_event_reviews(db: Session, event_id: int) -> List[models.EventReview]:
+    return db.query(models.EventReview).filter(models.EventReview.event_id == event_id).all()
+
+def create_course_review(db: Session, review: schemas.CourseReviewCreate) -> models.CourseReview:
+    db_review = models.CourseReview(
+        course_id=review.course_id,
+        user_id=review.user_id,
+        rating=review.rating,
+        comment=review.comment
+    )
+    db.add(db_review)
+    db.commit()
+    db.refresh(db_review)
+    return db_review
+
+def get_course_reviews(db: Session, course_id: str) -> List[models.CourseReview]:
+    return db.query(models.CourseReview).filter(models.CourseReview.course_id == course_id).all()

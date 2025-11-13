@@ -12,17 +12,24 @@ integrate proper authentication and enforce access control. Here we only
 require a `user_id` query parameter where necessary.
 """
 
-from fastapi import FastAPI
+import time
+import logging
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from .database import init_db
-from .api import (
+from ..db.init_db import init_db
+from ..api import (
     schedule_router,
     events_router,
     leaderboard_router,
     university_router,
     profile_router,
+    reviews_router,
 )
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # Initialize the FastAPI app
@@ -47,10 +54,22 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    logger.info(f"Request: {request.method} {request.url.path}")
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    logger.info(f"Response: {response.status_code} ({process_time:.4f}s)")
+    return response
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     """Initialize the database when the application starts."""
+    logger.info("Starting up and initializing database...")
     init_db()
+    logger.info("Database initialization complete.")
 
 # Mount individual routers from the api package. Splitting the routes
 # into separate modules clarifies their responsibilities and makes the
@@ -60,10 +79,10 @@ app.include_router(events_router)
 app.include_router(leaderboard_router)
 app.include_router(university_router)
 app.include_router(profile_router)
+app.include_router(reviews_router)
 
 
 @app.get("/", tags=["root"])
 def read_root() -> dict[str, str]:
     """Root endpoint showing service status."""
     return {"status": "ok"}
-

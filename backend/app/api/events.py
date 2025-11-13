@@ -12,17 +12,12 @@ from sqlalchemy import func
 
 from .. import models  # needed for update_event annotations
 
-from .. import crud, schemas
-from ..database import SessionLocal
+from ..crud import event as crud
+from .. import schemas
+from .deps import get_db
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+class UserEventPayload(schemas.BaseModel):
+    user_id: int
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -51,22 +46,22 @@ def create_event_endpoint(event: schemas.EventBase, db: Session = Depends(get_db
 
 
 @router.post("/{event_id}/signup", status_code=status.HTTP_200_OK)
-def signup_event(event_id: int, db: Session = Depends(get_db)) -> dict[str, bool]:
-    """Sign up the default user (ID=1) for an event.
+def signup_event(event_id: int, payload: UserEventPayload, db: Session = Depends(get_db)) -> dict[str, bool]:
+    """Sign up a user for an event.
 
     Returns a JSON object indicating whether a new sign‑up was recorded.
     """
-    success = crud.signup_for_event(db, event_id=event_id, user_id=1)
+    success = crud.signup_for_event(db, event_id=event_id, user_id=payload.user_id)
     return {"success": success}
 
 
 @router.post("/{event_id}/unsubscribe", status_code=status.HTTP_200_OK)
-def unsubscribe_event(event_id: int, db: Session = Depends(get_db)) -> dict[str, bool]:
-    """Remove the default user's sign‑up for an event.
+def unsubscribe_event(event_id: int, payload: UserEventPayload, db: Session = Depends(get_db)) -> dict[str, bool]:
+    """Remove a user's sign‑up for an event.
 
     Returns a JSON object indicating whether a sign‑up was removed.
     """
-    success = crud.unsubscribe_event(db, event_id=event_id, user_id=1)
+    success = crud.unsubscribe_event(db, event_id=event_id, user_id=payload.user_id)
     return {"success": success}
 
 

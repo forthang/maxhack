@@ -1,5 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { UserContext } from '../components/layout/App';
+import ReviewForm from '../components/common/ReviewForm'; // Import ReviewForm
+import ReviewList from '../components/common/ReviewList'; // Import ReviewList
+import { ReviewOut } from '../types/review'; // Import ReviewOut type
 
 interface EventData {
   title: string;
@@ -12,6 +16,7 @@ interface EventData {
   signed_up?: boolean;
   id?: number;
   auditorium?: string | null;
+  duration_hours?: number; // Add duration_hours
 }
 
 /**
@@ -23,6 +28,7 @@ interface EventData {
 const EventDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currentUserId } = useContext(UserContext);
   const [eventData, setEventData] = useState<EventData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [editMode, setEditMode] = useState(false);
@@ -35,14 +41,37 @@ const EventDetails: React.FC = () => {
     materials: '',
     auditorium: '',
   });
+  const [reviews, setReviews] = useState<ReviewOut[]>([]); // State for reviews
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+
+  // Function to load reviews
+  const loadReviews = async () => {
+    if (!id) return;
+    setReviewsLoading(true);
+    try {
+      const resp = await fetch(`/api/events/${id}/reviews`);
+      if (resp.ok) {
+        const data = await resp.json();
+        setReviews(data);
+      } else {
+        console.error(`Failed to load reviews for event ${id}: ${resp.status}`);
+      }
+    } catch (e) {
+      console.error("Failed to load reviews:", e);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
 
   useEffect(() => {
-    const load = async () => {
+    const loadEventAndReviews = async () => { // Combined loading function
       if (!id) return;
       const numericId = Number(id);
+      setLoading(true);
       try {
         // Try to find in events first
-        const evResp = await fetch('/api/events?user_id=1');
+        const evResp = await fetch(`/api/events?user_id=${currentUserId}`);
         if (evResp.ok) {
           const events = await evResp.json();
           const ev = events.find((e: any) => e.id === numericId);
@@ -52,19 +81,21 @@ const EventDetails: React.FC = () => {
               id: ev.id,
               title: ev.title,
               description: ev.description,
-              date: start.toLocaleDateString('ru-RU', { dateStyle: 'long' }),
-              time: start.toLocaleTimeString('ru-RU', { timeStyle: 'short' }),
+              date: start.toISOString().split('T')[0], // Store as YYYY-MM-DD
+              time: start.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', hour12: false }), // Store as HH:mm
               type: 'event',
               materials: ev.materials ?? null,
               signup_count: ev.signup_count,
               signed_up: ev.signed_up,
               auditorium: ev.auditorium ?? null,
+              duration_hours: ev.duration_hours, // Ensure duration_hours is available for editing
             });
+            await loadReviews(); // Load reviews after event data is set
             return;
           }
         }
-        // If not found, try schedule
-        const schResp = await fetch('/api/schedule');
+        // If event not found, try schedule (classes don't have reviews yet)
+        const schResp = await fetch(`/api/schedule?user_id=${currentUserId}`);
         if (schResp.ok) {
           const items = await schResp.json();
           const item = items.find((i: any) => i.id === numericId);
@@ -77,6 +108,7 @@ const EventDetails: React.FC = () => {
               time: `${start.toLocaleTimeString('ru-RU', { timeStyle: 'short' })} — ${new Date(item.end_time).toLocaleTimeString('ru-RU', { timeStyle: 'short' })}`,
               type: 'class',
             });
+            // No reviews for classes, so no loadReviews() call here
             return;
           }
         }
@@ -86,8 +118,8 @@ const EventDetails: React.FC = () => {
         setLoading(false);
       }
     };
-    load();
-  }, [id]);
+    loadEventAndReviews();
+  }, [id, currentUserId]);
 
   if (loading || !eventData) {
     return (
@@ -108,7 +140,7 @@ const EventDetails: React.FC = () => {
         alt="Изображение события"
         className="mb-4 rounded-lg shadow-md max-w-full"
       />
-      <p className="text-gray-700 dark:text-gray-300 mb-2"><strong>Дата:</strong> {eventData.date}</p>
+      <p className="text-gray-700 dark:text-gray-300 mb-2"><strong>Дата:</strong> {new Date(eventData.date).toLocaleDateString('ru-RU', { dateStyle: 'long' })}</p>
       <p className="text-gray-700 dark:text-gray-300 mb-2"><strong>Время:</strong> {eventData.time}</p>
       {eventData.auditorium && (
         <p className="text-gray-700 dark:text-gray-300 mb-2"><strong>Аудитория:</strong> {eventData.auditorium}</p>
@@ -127,35 +159,6 @@ const EventDetails: React.FC = () => {
       {/* Actions for events: sign up/unsubscribe and edit */}
       {eventData.type === 'event' && eventData.id !== undefined && (
         <div className="mt-4 space-x-2">
-          {!eventData.signed_up ? (
-            <button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-              onClick={async () => {
-                const resp = await fetch(`/api/events/${eventData.id}/signup`, { method: 'POST' });
-                if (resp.ok) {
-                  setLoading(true);
-                  setEventData(null);
-                  navigate(0);
-                }
-              }}
-            >
-              Записаться
-            </button>
-          ) : (
-            <button
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
-              onClick={async () => {
-                const resp = await fetch(`/api/events/${eventData.id}/unsubscribe`, { method: 'POST' });
-                if (resp.ok) {
-                  setLoading(true);
-                  setEventData(null);
-                  navigate(0);
-                }
-              }}
-            >
-              Отписаться
-            </button>
-          )}
           {/* Edit button */}
           <button
             className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded"
@@ -163,9 +166,9 @@ const EventDetails: React.FC = () => {
               setEditFields({
                 title: eventData.title,
                 description: eventData.description,
-                date: eventData.date,
-                time: eventData.time.split(' — ')[0] || eventData.time,
-                duration: 2,
+                date: eventData.date, // Already YYYY-MM-DD
+                time: eventData.time, // Already HH:mm
+                duration: eventData.duration_hours || 2, // Use existing duration if available
                 materials: eventData.materials || '',
                 auditorium: eventData.auditorium || '',
               });
@@ -224,7 +227,7 @@ const EventDetails: React.FC = () => {
               onChange={(e) => setEditFields((prev) => ({ ...prev, duration: Number(e.target.value) }))}
               className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               min={1}
-              max={12}
+              max={24}
             />
           </div>
           <div className="mb-2">
@@ -266,8 +269,9 @@ const EventDetails: React.FC = () => {
                 if (resp.ok) {
                   setEditMode(false);
                   setLoading(true);
-                  setEventData(null);
-                  navigate(0);
+                  setEventData(null); // Clear event data to force re-fetch
+                  loadReviews(); // Re-fetch reviews as well
+                  // navigate(0); // This reloads the whole page, consider a better way
                 }
               }}
             >
@@ -279,6 +283,22 @@ const EventDetails: React.FC = () => {
             >
               Отмена
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Reviews Section */}
+      {eventData.type === 'event' && eventData.id !== undefined && (
+        <div className="mt-8">
+          <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Отзывы</h3>
+          {reviewsLoading ? (
+            <p>Загрузка отзывов...</p>
+          ) : (
+            <ReviewList reviews={reviews} />
+          )}
+
+          <div className="mt-6">
+            <ReviewForm entityId={eventData.id} entityType="event" onReviewSubmitted={loadReviews} />
           </div>
         </div>
       )}

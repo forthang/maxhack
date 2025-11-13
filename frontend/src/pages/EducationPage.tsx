@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 
 /**
  * Компонент курсов: показывает дорожные карты по специальностям. Пользователь
@@ -55,13 +55,15 @@ const tracks: Track[] = [
   },
 ];
 
-import CourseGraph, { CourseNode } from './CourseGraph';
+import CourseGraph, { CourseNode } from '../components/CourseGraph';
+import { UserContext } from '../components/layout/App';
 
 const Education: React.FC = () => {
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
   const [completed, setCompleted] = useState<{ [key: string]: boolean }>({});
   const [xp, setXp] = useState<number>(0);
   const [coins, setCoins] = useState<number>(0);
+  const { currentUserId } = useContext(UserContext);
 
   // Дорожные карты для каждого направления. В реальном приложении эти данные
   // могут поступать с сервера или редактироваться администраторами. Здесь
@@ -213,24 +215,24 @@ const Education: React.FC = () => {
 
   // Загрузка прогресса из localStorage
   useEffect(() => {
-    const storedXp = localStorage.getItem('userXp');
-    const storedCoins = localStorage.getItem('userCoins');
-    const storedCompleted = localStorage.getItem('completedCourses');
+    const storedXp = localStorage.getItem(`userXp_${currentUserId}`);
+    const storedCoins = localStorage.getItem(`userCoins_${currentUserId}`);
+    const storedCompleted = localStorage.getItem(`completedCourses_${currentUserId}`);
     if (storedXp) setXp(Number(storedXp));
     if (storedCoins) setCoins(Number(storedCoins));
     if (storedCompleted) setCompleted(JSON.parse(storedCompleted));
-  }, []);
+  }, [currentUserId]);
 
   // Сохранение прогресса
   useEffect(() => {
     try {
-      localStorage.setItem('userXp', xp.toString());
-      localStorage.setItem('userCoins', coins.toString());
-      localStorage.setItem('completedCourses', JSON.stringify(completed));
+      localStorage.setItem(`userXp_${currentUserId}`, xp.toString());
+      localStorage.setItem(`userCoins_${currentUserId}`, coins.toString());
+      localStorage.setItem(`completedCourses_${currentUserId}`, JSON.stringify(completed));
     } catch {
       /* ignore */
     }
-  }, [xp, coins, completed]);
+  }, [xp, coins, completed, currentUserId]);
 
   // Завершение курса: отмечаем как завершённый, начисляем награды и
   // синхронизируемся с бэкендом. Если сервер возвращает новые значения
@@ -240,9 +242,14 @@ const Education: React.FC = () => {
     if (completed[node.id]) return;
     setCompleted((prev) => ({ ...prev, [node.id]: true }));
     try {
+      const payload = { user_id: currentUserId, xp: node.xp, coins: node.coins };
       const resp = await fetch(
-        `/api/profile/courses/${node.id}/complete?xp=${node.xp}&coins=${node.coins}`,
-        { method: 'POST' },
+        `/api/profile/courses/${node.id}/complete`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
       );
       if (resp.ok) {
         const data = await resp.json();
@@ -269,7 +276,9 @@ const Education: React.FC = () => {
     <div className="p-4 pb-20">
       <h2 className="text-2xl font-semibold mb-4">Курсы</h2>
       {!selectedTrack ? (
-        <div className="space-y-3">
+        <div
+          className="space-y-3"
+        >
           <p className="mb-2 text-gray-700 dark:text-gray-300">Выберите направление обучения:</p>
           {Object.keys(courseTrees).map((trackName) => (
             <button

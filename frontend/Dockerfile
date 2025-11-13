@@ -3,6 +3,12 @@ FROM node:22-alpine as build
 
 WORKDIR /frontend
 
+# Add build arguments for environment variables
+ARG VITE_API_URL
+
+# Set environment variables
+ENV VITE_API_URL=$VITE_API_URL
+
 COPY package.json .
 COPY tsconfig.json .
 COPY vite.config.ts .

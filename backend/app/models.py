@@ -20,7 +20,7 @@ from enum import Enum
 from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Enum as PgEnum
 from sqlalchemy.orm import relationship
 
-from .database import Base
+from .db.session import Base
 
 
 class UserRole(str, Enum):
@@ -49,7 +49,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     role = Column(PgEnum(UserRole), nullable=False)
-    university_id = Column(Integer, ForeignKey("universities.id"), nullable=True)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
     achievements = Column(String, nullable=True)  # comma‑separated achievements
     progress = Column(Integer, default=0)  # percentage progress for simplicity
 
@@ -58,8 +58,7 @@ class User(Base):
     xp = Column(Integer, default=0)
     coins = Column(Integer, default=0)
 
-    university = relationship("University", back_populates="users")
-    signups = relationship("SignUp", back_populates="user")
+    group = relationship("Group", back_populates="students")
     # New relationships for extended functionality
     completed_courses = relationship("CompletedCourse", back_populates="user")
     purchases = relationship("PurchasedItem", back_populates="user")
@@ -75,7 +74,35 @@ class University(Base):
     name = Column(String, unique=True, nullable=False)
     points = Column(Integer, default=0)
 
-    users = relationship("User", back_populates="university")
+    specializations = relationship("Specialization", back_populates="university")
+
+
+class Specialization(Base):
+    __tablename__ = "specializations"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    university_id = Column(Integer, ForeignKey("universities.id"), nullable=False)
+    university = relationship("University", back_populates="specializations")
+    courses = relationship("Course", back_populates="specialization")
+
+
+class Course(Base):
+    __tablename__ = "courses"
+    id = Column(Integer, primary_key=True, index=True)
+    year = Column(Integer, nullable=False)
+    specialization_id = Column(Integer, ForeignKey("specializations.id"), nullable=False)
+    specialization = relationship("Specialization", back_populates="courses")
+    groups = relationship("Group", back_populates="course")
+
+
+class Group(Base):
+    __tablename__ = "groups"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    course = relationship("Course", back_populates="groups")
+    students = relationship("User", back_populates="group")
+    schedule_items = relationship("ScheduleItem", back_populates="group")
 
 
 class ScheduleItem(Base):
@@ -87,11 +114,13 @@ class ScheduleItem(Base):
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     description = Column(String, nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
 
     # Optional auditorium or classroom where the lesson takes place.
     auditorium = Column(String, nullable=True)
 
-    signups = relationship("SignUp", back_populates="schedule_item")
+    group = relationship("Group", back_populates="schedule_items")
+
 
 
 class Event(Base):
@@ -122,20 +151,6 @@ class Event(Base):
     # Note: We previously stored the creator ID here. To simplify the
     # schema and avoid migrations, this column has been removed. Events
     # created by users will not reference their creator in this version.
-
-
-class SignUp(Base):
-    """Association table linking users to schedule items they signed up for."""
-
-    __tablename__ = "signups"
-
-    id = Column(Integer, primary_key=True, index=True)
-    # user_id is optional when registration is anonymous
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    schedule_item_id = Column(Integer, ForeignKey("schedule.id"), nullable=False)
-
-    user = relationship("User", back_populates="signups")
-    schedule_item = relationship("ScheduleItem", back_populates="signups")
 
 
 class EventSignup(Base):
@@ -187,3 +202,31 @@ class PurchasedItem(Base):
     item_id = Column(String, nullable=False)
 
     user = relationship("User", back_populates="purchases")
+
+
+from sqlalchemy.sql import func
+
+class EventReview(Base):
+    __tablename__ = "event_reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rating = Column(Integer, nullable=False) # e.g., 1-5
+    comment = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    event = relationship("Event")
+    user = relationship("User")
+
+class CourseReview(Base):
+    __tablename__ = "course_reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(String, nullable=False) # Assuming course_id is a string as in CompletedCourse
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rating = Column(Integer, nullable=False) # e.g., 1-5
+    comment = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")

@@ -1,22 +1,15 @@
 """Leaderboard endpoints.
 
-Provides an endpoint to retrieve the university leaderboard. Universities
-are ordered by their points descending and a rank is computed on the fly.
+Provides endpoints to retrieve the university and student leaderboards.
+Universities are ordered by points, and students by XP.
 """
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from .. import crud, schemas
-from ..database import SessionLocal
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+from ..crud import university as crud
+from .. import schemas
+from .deps import get_db
 
 
 router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
@@ -26,3 +19,9 @@ router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
 def get_leaderboard(db: Session = Depends(get_db)) -> list[schemas.LeaderboardEntry]:
     """Return the university leaderboard."""
     return crud.get_leaderboard(db)
+
+
+@router.get("/students", response_model=list[schemas.StudentLeaderboardEntry])
+def get_student_leaderboard(db: Session = Depends(get_db)) -> list[schemas.StudentLeaderboardEntry]:
+    """Return the student leaderboard, ranked by XP."""
+    return crud.get_student_leaderboard(db)

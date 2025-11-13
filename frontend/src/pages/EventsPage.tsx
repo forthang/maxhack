@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import EventCard from './common/EventCard';
+import React, { useEffect, useState, useContext } from 'react';
+import EventCard from '../components/common/EventCard';
 import { useNavigate } from 'react-router-dom';
+import { UserContext } from '../components/layout/App';
 
 interface EventItem {
   id: number;
@@ -18,14 +19,24 @@ const Events: React.FC = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { currentUserId } = useContext(UserContext);
 
   const loadEvents = async () => {
     setLoading(true);
     try {
-      // Request events with user_id=1 so that signed_up and signup_count are returned
-      const resp = await fetch('/api/events?user_id=1');
+      const resp = await fetch(`/api/events?user_id=${currentUserId}`);
       if (resp.ok) {
-        const data = await resp.json();
+        let data: EventItem[] = await resp.json();
+
+        // Filter out expired events
+        const now = new Date();
+        data = data.filter(e => {
+          const start = new Date(e.event_time);
+          const duration = e.duration_hours ?? 2;
+          const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
+          return end > now;
+        });
+
         setEvents(data);
       }
     } catch (e) {
@@ -37,7 +48,7 @@ const Events: React.FC = () => {
 
   useEffect(() => {
     loadEvents();
-  }, []);
+  }, [currentUserId]);
 
   return (
     <div className="p-4">
@@ -62,13 +73,21 @@ const Events: React.FC = () => {
                   onDetails={() => navigate(`/event/${e.id}`)}
                   onSignup={!e.signed_up
                     ? async () => {
-                        const resp = await fetch(`/api/events/${e.id}/signup`, { method: 'POST' });
+                        const resp = await fetch(`/api/events/${e.id}/signup`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ user_id: currentUserId }),
+                        });
                         if (resp.ok) loadEvents();
                       }
                     : undefined}
                   onUnsubscribe={e.signed_up
                     ? async () => {
-                        const resp = await fetch(`/api/events/${e.id}/unsubscribe`, { method: 'POST' });
+                        const resp = await fetch(`/api/events/${e.id}/unsubscribe`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ user_id: currentUserId }),
+                        });
                         if (resp.ok) loadEvents();
                       }
                     : undefined}

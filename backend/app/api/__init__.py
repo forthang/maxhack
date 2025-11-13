@@ -12,3 +12,4 @@ from .events import router as events_router  # noqa: F401
 from .leaderboard import router as leaderboard_router  # noqa: F401
 from .university import router as university_router  # noqa: F401
 from .profile import router as profile_router  # noqa: F401
+from .reviews import router as reviews_router  # noqa: F401

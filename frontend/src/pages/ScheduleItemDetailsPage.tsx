@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { UserContext } from '../components/layout/App';
 
 interface ClassData {
   id: number;
@@ -20,6 +21,7 @@ interface ClassData {
 const ScheduleItemDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { currentUserId } = useContext(UserContext);
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +29,7 @@ const ScheduleItemDetails: React.FC = () => {
     const load = async () => {
       if (!id) return;
       try {
-        const resp = await fetch('/api/schedule?user_id=1');
+        const resp = await fetch(`/api/schedule?user_id=${currentUserId}`);
         if (resp.ok) {
           const data: any[] = await resp.json();
           const item = data.find((i: any) => i.id === Number(id));
@@ -42,7 +44,7 @@ const ScheduleItemDetails: React.FC = () => {
       }
     };
     load();
-  }, [id]);
+  }, [id, currentUserId]);
 
   if (loading || !classData) {
     return (

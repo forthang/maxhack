@@ -14,7 +14,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY wait_for_db.py ./
+COPY entrypoint.sh ./
+RUN chmod +x ./entrypoint.sh
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["uvicorn", "app.core.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "debug"]
