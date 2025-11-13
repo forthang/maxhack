@@ -475,6 +475,10 @@ class PurchasePayload(BaseModel):
     item_id: str
     cost: int
 
+class JoinGroupPayload(BaseModel):
+    user_id: int
+    group_id: int
+
 class ReviewBase(BaseModel):
     rating: int = Field(..., ge=1, le=5, description="Оценка от 1 до 5")
     comment: Optional[str] = Field(None, max_length=500, description="Текст отзыва")

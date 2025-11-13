@@ -54,3 +54,16 @@ def get_university_details(db: Session, university_id: int) -> Optional[schemas.
         return None
 
     return schemas.UniversityDetailOut.from_orm(uni)
+
+
+def get_all_universities_details(db: Session) -> List[schemas.UniversityDetailOut]:
+    """Return all universities with their full nested structure."""
+    universities = db.query(models.University).options(
+        joinedload(models.University.specializations)
+        .joinedload(models.Specialization.courses)
+        .joinedload(models.Course.groups)
+        .joinedload(models.Group.students)
+    ).order_by(models.University.name).all()
+
+    return [schemas.UniversityDetailOut.from_orm(uni) for uni in universities]
+

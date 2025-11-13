@@ -8,28 +8,20 @@ interface ClassData {
   end_time: string;
   description: string;
   auditorium?: string | null;
-  signup_count?: number;
-  signed_up?: boolean;
 }
 
-/**
- * Страница подробностей занятия (лекции или семинара). Загружает
- * информацию о занятии из расписания по идентификатору и отображает
- * время, аудиторию и описание. Пока функциональность записи или
- * отписки здесь не реализована.
- */
 const ScheduleItemDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentUserId } = useContext(UserContext);
+  const { currentUser } = useContext(UserContext);
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      if (!id) return;
+      if (!id || !currentUser?.id) return;
       try {
-        const resp = await fetch(`/api/schedule?user_id=${currentUserId}`);
+        const resp = await fetch(`/api/schedule?user_id=${currentUser.id}`);
         if (resp.ok) {
           const data: any[] = await resp.json();
           const item = data.find((i: any) => i.id === Number(id));
@@ -43,8 +35,10 @@ const ScheduleItemDetails: React.FC = () => {
         setLoading(false);
       }
     };
-    load();
-  }, [id, currentUserId]);
+    if (currentUser) {
+      load();
+    }
+  }, [id, currentUser]);
 
   if (loading || !classData) {
     return (

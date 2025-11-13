@@ -8,6 +8,7 @@ a specific university.
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
+from typing import List
 
 from ..crud import university as crud
 from .. import schemas
@@ -15,6 +16,12 @@ from .deps import get_db
 
 
 router = APIRouter(prefix="/universities", tags=["universities"])
+
+
+@router.get("/", response_model=List[schemas.UniversityDetailOut])
+def read_all_universities_details(db: Session = Depends(get_db)) -> List[schemas.UniversityDetailOut]:
+    """Return all universities with their full nested structure."""
+    return crud.get_all_universities_details(db)
 
 
 @router.get("/{university_id}", response_model=schemas.UniversityOut)

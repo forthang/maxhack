@@ -49,3 +49,12 @@ def purchase_item(payload: schemas.PurchasePayload, db: Session = Depends(get_db
         return crud.purchase_item(db, user_id=payload.user_id, item_id=payload.item_id, cost=payload.cost)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/join-group", response_model=schemas.ProfileOut)
+def join_group(payload: schemas.JoinGroupPayload, db: Session = Depends(get_db)) -> schemas.ProfileOut:
+    """Assigns a user to a group and updates their university affiliation."""
+    try:
+        return crud.join_group(db, user_id=payload.user_id, group_id=payload.group_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

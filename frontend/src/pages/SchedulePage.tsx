@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import EventCard from '../components/common/EventCard';
 import CreateEventForm from '../components/common/CreateEventForm';
 import UploadSchedule from '../components/common/UploadSchedule';
@@ -31,8 +32,10 @@ const Schedule: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useContext(UserContext);
 
+  const showApplicantModal = !loading && currentUser && !currentUser.group_id;
+
   const loadData = async () => {
-    if (!currentUser?.id) return; // Don't load if no user
+    if (!currentUser?.id || !currentUser?.group_id) return; // Don't load if no user or group
 
     setLoading(true);
     try {
@@ -123,15 +126,6 @@ const Schedule: React.FC = () => {
   };
 
   const renderScheduleGrid = () => {
-    if (!currentUser?.group_id) {
-      return (
-        <div className="text-center p-8">
-          <p className="text-lg text-gray-600 dark:text-gray-400">У вас пока нет расписания.</p>
-          <p className="text-md text-gray-500 dark:text-gray-500">Пожалуйста, выберите ВУЗ и группу, чтобы увидеть свое расписание.</p>
-        </div>
-      )
-    }
-
     const itemsForGrid = items
       .filter(item => {
         const isClass = item.type === 'class';
@@ -300,6 +294,35 @@ const Schedule: React.FC = () => {
 
   return (
     <div className="p-4">
+      <AnimatePresence>
+        {showApplicantModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm text-center"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Подтвердите свой статус</h3>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                Сейчас вы вошли как абитуриент. Чтобы подтвердить статус студента или работника, вам нужно присоединиться к вузу.
+              </p>
+              <button
+                onClick={() => navigate('/leaderboard')}
+                className="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Перейти к выбору группы
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Расписание</h2>
         {view === 'schedule' && (
@@ -325,7 +348,8 @@ const Schedule: React.FC = () => {
         ))}
       </div>
       {loading ? <p>Загрузка...</p> : 
-       view === 'schedule' ? renderScheduleGrid() :
+       (view === 'schedule' && currentUser?.group_id) ? renderScheduleGrid() :
+       (view === 'schedule' && !currentUser?.group_id) ? <div className="text-center p-8 text-gray-500">Выберите группу, чтобы увидеть расписание.</div> :
        view === 'events' ? renderEventsList() :
        renderMyEvents()}
     </div>

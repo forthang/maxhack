@@ -79,8 +79,8 @@ def seed_db():
                     continue
 
                 for class_time in class_times:
-                    start_datetime = current_day.strftime('%Y-%m-%d') + 'T' + class_time.strftime('%H:%M:%S')
-                    end_datetime = current_day.strftime('%Y-%m-%d') + 'T' + (class_time.hour + 1).__str__().zfill(2) + ':' + class_time.minute.__str__().zfill(2) + ':00'
+                    start_datetime = datetime.combine(current_day, class_time)
+                    end_datetime = start_datetime + timedelta(hours=1, minutes=30) # Assuming 1.5h duration
 
                     schedule_item = ScheduleItem(
                         group_id=group.id,

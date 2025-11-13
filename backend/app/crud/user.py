@@ -57,6 +57,29 @@ def purchase_item(db: Session, user_id: int, item_id: str, cost: int) -> schemas
     db.commit()
     return get_profile(db, user_id)
 
+
+def join_group(db: Session, user_id: int, group_id: int) -> schemas.ProfileOut:
+    """Associate a user with a group and university."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise ValueError("User not found")
+
+    group = db.query(models.Group).options(
+        joinedload(models.Group.course)
+        .joinedload(models.Course.specialization)
+        .joinedload(models.Specialization.university)
+    ).filter(models.Group.id == group_id).first()
+
+    if not group:
+        raise ValueError("Group not found")
+
+    user.group_id = group.id
+    user.university_id = group.course.specialization.university.id
+    db.commit()
+    
+    return get_profile(db, user_id)
+
+
 def update_profile(db: Session, user_id: int, payload: schemas.UserUpdate) -> Optional[schemas.ProfileOut]:
     """Update a user's editable fields."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
