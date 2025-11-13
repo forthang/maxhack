@@ -14,11 +14,13 @@ require a `user_id` query parameter where necessary.
 
 import time
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from ..db.init_db import init_db
-from ..api import (
+from app.db.init_db import init_db
+from app.db.seed_db import seed_db
+from app.api import (
     schedule_router,
     events_router,
     leaderboard_router,
@@ -32,12 +34,21 @@ from ..api import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Create a lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting up and initializing database...")
+    init_db()
+    seed_db()
+    yield
+    logger.info("Shutting down...")
 
 # Initialize the FastAPI app
 app = FastAPI(
-    title="University Support API",
-    description="Backend API for university mobile web application.",
+    title="MaxHack API",
+    description="API for the MaxHack project",
     version="0.1.0",
+    lifespan=lifespan
 )
 
 origins = [
@@ -54,7 +65,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
@@ -63,26 +73,6 @@ async def log_requests(request: Request, call_next):
     process_time = time.time() - start_time
     logger.info(f"Response: {response.status_code} ({process_time:.4f}s)")
     return response
-
-
-from app.db.init_db import init_db
-from app.db.seed_db import seed_db
-
-# Create a lifespan context manager
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("Starting up and initializing database...")
-    init_db()
-    seed_db()
-    yield
-    logger.info("Shutting down...")
-
-app = FastAPI(
-    title="MaxHack API",
-    description="API for the MaxHack project",
-    version="0.1.0",
-    lifespan=lifespan
-)
 
 # Mount individual routers from the api package. Splitting the routes
 # into separate modules clarifies their responsibilities and makes the
