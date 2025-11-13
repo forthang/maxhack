@@ -22,9 +22,9 @@ export const useMaxApp = (): MaxAppHook => {
         const webApp = window.WebApp;
 
         if (!webApp || !webApp.initDataUnsafe || !webApp.initDataUnsafe.user) {
-          const errorMsg = "MAX Bridge data not found (window.WebApp.initDataUnsafe.user is missing).";
+          const errorMsg = "MAX Bridge data not found (window.WebApp.initDataUnsafe.user is missing). Cannot proceed without user data.";
           if (process.env.NODE_ENV === 'development') {
-            console.warn(errorMsg, "This is expected in a local browser environment.");
+            console.warn(errorMsg, "This is expected in a local browser environment if not running within MAX.");
           }
           throw new Error(errorMsg);
         }

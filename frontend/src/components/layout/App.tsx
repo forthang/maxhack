@@ -69,8 +69,9 @@ const App: React.FC = () => {
     return <div className="flex items-center justify-center min-h-screen bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Не удалось получить данные пользователя.</div>;
   }
 
-  // --- Applicant Modal ---
-  const isApplicant = userFromHook && !userFromHook.group_id;
+  // Debugging Modal for MAX Bridge User Data
+  const [showDebugModal, setShowDebugModal] = useState(false);
+  const isMaxApp = typeof window !== 'undefined' && typeof (window as any).WebApp !== 'undefined';
 
   return (
     <ThemeContext.Provider value={themeContextValue}>
@@ -78,6 +79,35 @@ const App: React.FC = () => {
         <div className={darkMode ? 'dark' : ''}>
           <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 flex flex-col font-sans">
             
+            {/* Debugging Modal */}
+            {isMaxApp && userFromHook && (
+              <div className="fixed top-4 right-4 z-50">
+                <button
+                  onClick={() => setShowDebugModal(true)}
+                  className="bg-blue-500 text-white p-2 rounded-full shadow-lg"
+                >
+                  Debug
+                </button>
+              </div>
+            )}
+
+            {showDebugModal && isMaxApp && userFromHook && (
+              <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 text-left max-w-md w-full relative">
+                  <h2 className="text-xl font-bold mb-4">MAX User Data (Debug)</h2>
+                  <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm overflow-x-auto">
+                    {JSON.stringify(userFromHook, null, 2)}
+                  </pre>
+                  <button
+                    onClick={() => setShowDebugModal(false)}
+                    className="mt-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full"
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              </div>
+            )}
+
             {isApplicant && (
               <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 text-center">
