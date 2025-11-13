@@ -25,6 +25,7 @@ from ..api import (
     university_router,
     profile_router,
     reviews_router,
+    auth_router,
 )
 
 # Configure logging
@@ -80,6 +81,7 @@ app.include_router(leaderboard_router)
 app.include_router(university_router)
 app.include_router(profile_router)
 app.include_router(reviews_router)
+app.include_router(auth_router)
 
 
 @app.get("/", tags=["root"])

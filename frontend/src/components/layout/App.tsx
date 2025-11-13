@@ -19,14 +19,13 @@ export const UserContext = createContext({ currentUserId: 1, setCurrentUserId: (
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
   const location = useLocation();
-  const { getUserId } = useMaxApp(); // Use the MAX App hook
+  const { userId, isValidating, isValidated, validationError } = useMaxApp(); // Use the MAX App hook
   
-  const [currentUserId, setCurrentUserId] = useState(() => getUserId());
+  const [currentUserId, setCurrentUserId] = useState(userId);
 
   useEffect(() => {
-    // This effect can be used to listen to potential user changes from the MAX app, if applicable.
-    // For now, we set it once at the start.
-  }, []);
+    setCurrentUserId(userId);
+  }, [userId]);
 
   const toggleTheme = () => setDarkMode((prev) => !prev);
 
@@ -51,6 +50,18 @@ const App: React.FC = () => {
       </Link>
     );
   };
+
+  if (isValidating) {
+    return <div className="flex items-center justify-center min-h-screen bg-neutral-100 dark:bg-neutral-900">Загрузка...</div>;
+  }
+
+  if (validationError) {
+    return <div className="flex items-center justify-center min-h-screen bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Ошибка валидации: {validationError}</div>;
+  }
+
+  if (!isValidated) {
+    return <div className="flex items-center justify-center min-h-screen bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Не удалось проверить подлинность приложения.</div>;
+  }
 
   return (
     <ThemeContext.Provider value={{ darkMode, toggleTheme }}>
