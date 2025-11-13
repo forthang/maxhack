@@ -16,6 +16,7 @@ export const useMaxApp = (): MaxAppHook => {
 
   useEffect(() => {
     const login = async () => {
+      let userData; // Declare userData here
       try {
         // 1. Check for MAX Bridge
         // @ts-ignore
