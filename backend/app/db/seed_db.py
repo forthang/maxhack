@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal, engine
 from app.db.init_db import init_db
 from app.models import University, Specialization, Course, Group, User, ScheduleItem
-from datetime import date, timedelta, time
+from datetime import date, timedelta, time, datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
