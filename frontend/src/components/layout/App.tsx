@@ -68,9 +68,9 @@ const App: React.FC = () => {
           <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 flex flex-col font-sans">
             <main className="flex-grow pb-24">
     <Routes location={location} key={location.pathname}>
-      {/* Temporarily disabling all routes except the leaderboard to isolate the error */}
-      <Route path="/" element={<PageWrapper><LeaderboardPage /></PageWrapper>} />
-      <Route path="/leaderboard" element={<PageWrapper><LeaderboardPage /></PageWrapper>} />
+      {/* Temporarily disabling all routes and PageWrapper to isolate the error */}
+      <Route path="/" element={<LeaderboardPage />} />
+      <Route path="/leaderboard" element={<LeaderboardPage />} />
       
       {/* 
       <Route path="/" element={<PageWrapper><SchedulePage /></PageWrapper>} />
