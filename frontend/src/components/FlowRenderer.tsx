@@ -1,5 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -24,7 +23,7 @@ const FlowRenderer: React.FC<FlowRendererProps> = ({ root, completed }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Removed as it's not used in FlowRenderer
 
   const computePositions = (
     node: CourseNode,
