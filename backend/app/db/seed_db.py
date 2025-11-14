@@ -2,7 +2,7 @@ import logging
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal, engine
 from app.db.init_db import init_db
-from app.models import University, Specialization, Course, Group, User, ScheduleItem
+from app.models import University, Specialization, Course, Group, User, ScheduleItem, Event
 from datetime import date, timedelta, time, datetime
 
 logging.basicConfig(level=logging.INFO)
@@ -135,7 +135,7 @@ def seed_db():
         for i in range(4):
             event_day = today + timedelta(days=i)
             event_time = datetime.combine(event_day, time(19, 0)) # 7 PM
-            new_event = models.Event(
+            new_event = Event(
                 title=f"Глобальное событие #{i+1}",
                 description=f"Описание для глобального события #{i+1}, которое состоится {event_day.strftime('%d.%m')}.",
                 event_time=event_time,
