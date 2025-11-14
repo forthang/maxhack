@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { useInitialUserLoad } from '../../hooks/useMaxApp';
 import { AppProviders } from './AppProviders';
 import { AppRoutes } from './AppRoutes';
@@ -7,12 +7,19 @@ import { UserContext } from '../../context/AppContext';
 
 const AppContent: React.FC = () => {
   const { currentUser } = useContext(UserContext);
+  const [showApplicantModal, setShowApplicantModal] = useState(true);
+
   const isApplicant = currentUser ? !currentUser.group_id : false;
+  const isUIBlocked = isApplicant && showApplicantModal;
 
   return (
     <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 flex flex-col font-sans">
-      <AppRoutes isApplicant={isApplicant} />
-      <AppModals />
+      <AppRoutes isUIBlocked={isUIBlocked} />
+      <AppModals
+        isApplicant={isApplicant}
+        showApplicantModal={showApplicantModal}
+        setShowApplicantModal={setShowApplicantModal}
+      />
     </div>
   );
 };
