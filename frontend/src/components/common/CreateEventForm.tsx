@@ -12,13 +12,18 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
   const [eventTime, setEventTime] = useState('');
   const [durationHours, setDurationHours] = useState(2); // Default to 2 hours
   const [auditorium, setAuditorium] = useState('');
+  const [organizer, setOrganizer] = useState('');
+  const [recommendedSkills, setRecommendedSkills] = useState('');
+  const [maxParticipants, setMaxParticipants] = useState(100);
+  const [category, setCategory] = useState('General');
+  const [level, setLevel] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !eventTime || !currentUser) {
-      setError('Please fill out all fields.');
+    if (!title || !description || !eventTime || !currentUser || !organizer || !category) {
+      setError('Please fill out all required fields (Title, Description, Date/Time, Organizer, Category).');
       return;
     }
     setIsSubmitting(true);
@@ -32,7 +37,12 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
           description,
           event_time: new Date(eventTime).toISOString(),
           duration_hours: durationHours,
-          auditorium: auditorium || null, // Send null if empty
+          auditorium: auditorium || null,
+          organizer,
+          recommended_skills: recommendedSkills.split(',').map(s => s.trim()).filter(Boolean), // Split and clean
+          max_participants: maxParticipants,
+          category,
+          уровень: level || null,
         }),
       });
       if (!response.ok) {
@@ -46,6 +56,11 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
       setEventTime('');
       setDurationHours(2);
       setAuditorium('');
+      setOrganizer('');
+      setRecommendedSkills('');
+      setMaxParticipants(100);
+      setCategory('General');
+      setLevel('');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -65,6 +80,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+          required
         />
       </div>
       <div>
@@ -75,6 +91,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+          required
         />
       </div>
       <div>
@@ -85,6 +102,7 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
           value={eventTime}
           onChange={(e) => setEventTime(e.target.value)}
           className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+          required
         />
       </div>
       <div>
@@ -107,7 +125,71 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
           value={auditorium}
           onChange={(e) => setAuditorium(e.target.value)}
           className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+          placeholder="Например: Онлайн, Ауд. 305"
         />
+      </div>
+      <div>
+        <label htmlFor="organizer" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Организатор</label>
+        <input
+          type="text"
+          id="organizer"
+          value={organizer}
+          onChange={(e) => setOrganizer(e.target.value)}
+          className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+          required
+        />
+      </div>
+      <div>
+        <label htmlFor="recommendedSkills" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Рекомендуемые навыки (через запятую)</label>
+        <input
+          type="text"
+          id="recommendedSkills"
+          value={recommendedSkills}
+          onChange={(e) => setRecommendedSkills(e.target.value)}
+          className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+          placeholder="Например: Python, Machine Learning, FastAPI"
+        />
+      </div>
+      <div>
+        <label htmlFor="maxParticipants" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Макс. участников</label>
+        <input
+          type="number"
+          id="maxParticipants"
+          value={maxParticipants}
+          onChange={(e) => setMaxParticipants(parseInt(e.target.value))}
+          min="1"
+          className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+        />
+      </div>
+      <div>
+        <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Категория</label>
+        <select
+          id="category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+          required
+        >
+          <option value="General">Общее</option>
+          <option value="Workshop">Мастер-класс</option>
+          <option value="Lecture">Лекция</option>
+          <option value="Hackathon">Хакатон</option>
+          <option value="Course">Курс</option>
+        </select>
+      </div>
+      <div>
+        <label htmlFor="level" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Уровень</label>
+        <select
+          id="level"
+          value={level}
+          onChange={(e) => setLevel(e.target.value)}
+          className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+        >
+          <option value="">Не указан</option>
+          <option value="начальный">Начальный</option>
+          <option value="средний">Средний</option>
+          <option value="продвинутый">Продвинутый</option>
+        </select>
       </div>
       <button
         type="submit"

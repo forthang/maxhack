@@ -144,6 +144,13 @@ class Event(Base):
     # Optional auditorium or location of the event.
     auditorium = Column(String, nullable=True)
 
+    # New fields for ML service
+    organizer = Column(String, nullable=False, default="Unknown Organizer")
+    recommended_skills = Column(String, nullable=True) # Comma-separated skills
+    max_participants = Column(Integer, nullable=False, default=100)
+    category = Column(String, nullable=False, default="General")
+    уровень = Column(String, nullable=True) # Level of the event (e.g., "начальный", "средний")
+
     signups = relationship("EventSignup", back_populates="event")
     reviews = relationship("EventReview", back_populates="event")
 

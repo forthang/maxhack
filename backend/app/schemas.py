@@ -119,6 +119,11 @@ class EventBase(BaseModel):
         default=None,
         description="Аудитория или место проведения события",
     )
+    organizer: str = Field(default="Unknown Organizer", description="Организатор события")
+    recommended_skills: List[str] = Field(default_factory=list, description="Рекомендуемые навыки для события")
+    max_participants: int = Field(default=100, ge=1, description="Максимальное количество участников")
+    category: str = Field(default="General", description="Категория события")
+    уровень: Optional[str] = Field(default=None, description="Уровень сложности события (например, 'начальный', 'средний')")
 
 class EventUpdate(BaseModel):
     """Schema for updating an event. All fields are optional."""
@@ -128,6 +133,11 @@ class EventUpdate(BaseModel):
     duration_hours: Optional[int] = Field(default=None, ge=1, le=12)
     materials: Optional[str] = None
     auditorium: Optional[str] = None
+    organizer: Optional[str] = None
+    recommended_skills: Optional[List[str]] = None
+    max_participants: Optional[int] = Field(default=None, ge=1)
+    category: Optional[str] = None
+    уровень: Optional[str] = None
 
 class EventOut(EventBase):
     id: int

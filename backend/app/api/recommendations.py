@@ -64,20 +64,17 @@ async def get_recommendations(user_id: int, db: Session = Depends(get_db)):
     # 5. Prepare Events for ML service
     ml_events = []
     for event_db in all_events_db:
-        # Assuming event_db.recommended_skills is a list of skill names (strings)
-        ml_event_skills = [skill.name for skill in event_db.skills] if event_db.skills else []
-        
         ml_events.append({
             "event_id": event_db.id,
             "title": event_db.title,
-            "organizer": event_db.organizer.name if event_db.organizer else "Unknown", # Assuming organizer has a name
-            "recommended_skills": ml_event_skills,
+            "organizer": event_db.organizer,
+            "recommended_skills": event_db.recommended_skills.split(",") if event_db.recommended_skills else [],
             "datetime": event_db.event_time.isoformat(),
             "duration_minutes": event_db.duration_hours * 60, # Convert hours to minutes
-            "location": event_db.auditorium if event_db.auditorium else "Онлайн", # Default to Online if no auditorium
-            "max_participants": event_db.max_participants if event_db.max_participants else 100,
-            "category": "workshop", # Default category, adjust if schema has it
-            "уровень": "средний" # Default level, adjust if schema has it
+            "location": event_db.auditorium if event_db.auditorium else "Онлайн",
+            "max_participants": event_db.max_participants,
+            "category": event_db.category,
+            "уровень": event_db.уровень
         })
 
     # 6. Construct RecommendationRequest payload

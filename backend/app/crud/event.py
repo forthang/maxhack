@@ -3,6 +3,42 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from .. import models, schemas
 
+def create_event(db: Session, payload: schemas.EventBase) -> schemas.EventOut:
+    """Create a new event and return it."""
+    event_data = payload.model_dump()
+    if "recommended_skills" in event_data and event_data["recommended_skills"] is not None:
+        event_data["recommended_skills"] = ",".join(event_data["recommended_skills"])
+    
+    event = models.Event(**event_data)
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    
+    event_out = schemas.EventOut.model_validate(event)
+    if event.recommended_skills:
+        event_out.recommended_skills = event.recommended_skills.split(",")
+    return event_out
+
+def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Optional[schemas.EventOut]:
+    """Update an existing event with the provided fields."""
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if event is None:
+        return None
+    
+    update_data = payload.model_dump(exclude_unset=True)
+    if "recommended_skills" in update_data and update_data["recommended_skills"] is not None:
+        update_data["recommended_skills"] = ",".join(update_data["recommended_skills"])
+    
+    for key, value in update_data.items():
+        setattr(event, key, value)
+    db.commit()
+    db.refresh(event)
+    
+    event_out = schemas.EventOut.model_validate(event)
+    if event.recommended_skills:
+        event_out.recommended_skills = event.recommended_skills.split(",")
+    return event_out
+
 def get_events(db: Session, user_id: Optional[int] = None) -> List[schemas.EventOut]:
     """Return all events sorted by time, optimized to avoid N+1 queries."""
     # Eager load signups to prevent N+1 queries in the loop
@@ -17,33 +53,21 @@ def get_events(db: Session, user_id: Optional[int] = None) -> List[schemas.Event
             user_signed = any(signup.user_id == user_id for signup in event.signups)
             
         event_out = schemas.EventOut.model_validate(event)
+        if event.recommended_skills:
+            event_out.recommended_skills = event.recommended_skills.split(",")
         event_out = event_out.model_copy(update={"signup_count": signup_count, "signed_up": user_signed})
         result.append(event_out)
     return result
 
-def get_event(db: Session, event_id: int) -> Optional[models.Event]:
+def get_event(db: Session, event_id: int) -> Optional[schemas.EventOut]:
     """Return a single event by its ID."""
-    return db.query(models.Event).filter(models.Event.id == event_id).first()
-
-def create_event(db: Session, payload: schemas.EventBase) -> schemas.EventOut:
-    """Create a new event and return it."""
-    event = models.Event(**payload.model_dump())
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    return schemas.EventOut.model_validate(event)
-
-def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Optional[schemas.EventOut]:
-    """Update an existing event with the provided fields."""
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if event is None:
         return None
-    update_data = payload.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(event, key, value)
-    db.commit()
-    db.refresh(event)
-    return schemas.EventOut.model_validate(event)
+    event_out = schemas.EventOut.model_validate(event)
+    if event.recommended_skills:
+        event_out.recommended_skills = event.recommended_skills.split(",")
+    return event_out
 
 def signup_for_event(db: Session, event_id: int, user_id: int) -> bool:
     """Register a user for an event."""
