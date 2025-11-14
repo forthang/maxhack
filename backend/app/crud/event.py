@@ -22,6 +22,10 @@ def get_events(db: Session, user_id: Optional[int] = None) -> List[schemas.Event
         result.append(event_out)
     return result
 
+def get_event(db: Session, event_id: int) -> Optional[models.Event]:
+    """Return a single event by its ID."""
+    return db.query(models.Event).filter(models.Event.id == event_id).first()
+
 def create_event(db: Session, payload: schemas.EventBase, creator_id: Optional[int] = None) -> schemas.EventOut:
     """Create a new event and return it."""
     event = models.Event(**payload.model_dump())

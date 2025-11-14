@@ -36,9 +36,11 @@ def get_event_reviews(
     reviews = crud.review.get_event_reviews(db, event_id=event_id)
     reviews_out = []
     for review in reviews:
-        user = crud.user.get_user(db, user_id=review.user_id)
         review_out = schemas.ReviewOut.model_validate(review)
-        review_out.user_name = f"{user.first_name} {user.last_name}" if user and (user.first_name or user.last_name) else (user.username if user else "Unknown User")
+        if review.user:
+            review_out.user_name = f"{review.user.first_name} {review.user.last_name}" if review.user.first_name or review.user.last_name else review.user.username
+        else:
+            review_out.user_name = "Unknown User"
         reviews_out.append(review_out)
     return reviews_out
 
@@ -70,8 +72,10 @@ def get_course_reviews(
     reviews = crud.review.get_course_reviews(db, course_id=course_id)
     reviews_out = []
     for review in reviews:
-        user = crud.user.get_user(db, user_id=review.user_id)
         review_out = schemas.ReviewOut.model_validate(review)
-        review_out.user_name = f"{user.first_name} {user.last_name}" if user and (user.first_name or user.last_name) else (user.username if user else "Unknown User")
-        reviews_out.append(reviews_out)
+        if review.user:
+            review_out.user_name = f"{review.user.first_name} {review.user.last_name}" if review.user.first_name or review.user.last_name else review.user.username
+        else:
+            review_out.user_name = "Unknown User"
+        reviews_out.append(review_out)
     return reviews_out

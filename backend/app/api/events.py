@@ -66,7 +66,7 @@ def unsubscribe_event(event_id: int, payload: UserEventPayload, db: Session = De
 
 
 @router.put("/{event_id}", response_model=schemas.EventOut)
-def update_event_endpoint(event_id: int, payload: schemas.EventUpdate, db: Session = Depends(get_db)) -> schemas.EventOut:
+def update_event_endpoint(event_id: int, payload: schemas.EventUpdate, user_id: int | None = None, db: Session = Depends(get_db)) -> schemas.EventOut:
     """Update an existing event.
 
     Accepts partial fields via EventUpdate and returns the updated event.
@@ -76,13 +76,16 @@ def update_event_endpoint(event_id: int, payload: schemas.EventUpdate, db: Sessi
     if updated is None:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Event not found")
-    # annotate with sign‑up info for the default user
-    # compute sign‑up count and status
+    
+    # Annotate with sign-up info for the given user, if provided
     signup_count = db.query(func.count(models.EventSignup.id)).filter(models.EventSignup.event_id == event_id).scalar()
-    user_signed = (
-        db.query(models.EventSignup)
-        .filter(models.EventSignup.event_id == event_id, models.EventSignup.user_id == 1)
-        .first()
-        is not None
-    )
+    user_signed = False
+    if user_id:
+        user_signed = (
+            db.query(models.EventSignup)
+            .filter(models.EventSignup.event_id == event_id, models.EventSignup.user_id == user_id)
+            .first()
+            is not None
+        )
+    
     return updated.model_copy(update={"signup_count": signup_count, "signed_up": user_signed})
