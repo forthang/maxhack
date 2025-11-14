@@ -1,25 +1,32 @@
-# Stage 1: build the React app
-FROM node:22-alpine as build
+# Stage 1: Build the React application
+FROM node:18-alpine AS build
 
-WORKDIR /frontend
+WORKDIR /app
 
-COPY package.json .
-COPY tsconfig.json .
-COPY vite.config.ts .
-COPY index.html ./
-COPY src ./src
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm install
 
-RUN npm install --prefer-offline --no-audit --progress=false && \
-    npm run build
+# Copy the rest of the application source code
+COPY . .
 
-# Stage 2: serve the built static files
-FROM nginx:alpine
+# Build the application
+# The VITE_API_URL build arg is passed from docker-compose.yml
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+RUN npm run build
 
-COPY --from=build /frontend/dist /usr/share/nginx/html
+# Stage 2: Serve the application with Nginx
+FROM nginx:1.23-alpine
 
-# Copy custom nginx configuration to proxy API requests to backend
+# Copy the built files from the build stage
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy the nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Expose port 80
 EXPOSE 80
 
+# Start Nginx
 CMD ["nginx", "-g", "daemon off;"]

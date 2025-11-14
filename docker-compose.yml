@@ -4,35 +4,34 @@ services:
   db:
     image: postgres:14-alpine
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+    env_file:
+      - ./.env
     volumes:
       - db_data:/var/lib/postgresql/data
-    ports:
-      - '5433:5433'
 
   backend:
     build: ./backend
     restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
+    env_file:
+      - ./.env
     depends_on:
       - db
-    ports:
-      - '8000:8000'
-    # Expose port to other containers
+    # The backend is not exposed directly, only through the frontend proxy
     expose:
-      - '8000'
+      - "8000"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_URL=${VITE_API_URL}
     restart: unless-stopped
+    env_file:
+      - ./.env
     depends_on:
       - backend
     ports:
-      - '3000:80'
+      - "8080:80"
     # The nginx config proxies /api to backend
 
 volumes:

@@ -1,0 +1,50 @@
+import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { UserContext } from '../../context/AppContext';
+
+interface AppModalsProps {
+  isApplicant: boolean;
+  showApplicantModal: boolean;
+  setShowApplicantModal: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export const AppModals: React.FC<AppModalsProps> = ({
+  isApplicant,
+  showApplicantModal,
+  setShowApplicantModal,
+}) => {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      {/* Applicant Modal */}
+      {isApplicant && showApplicantModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 text-center">
+            <h2 className="text-xl font-bold mb-2">Добро пожаловать!</h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Сейчас вы вошли как абитуриент. Чтобы получить доступ к расписанию и другим функциям, вам нужно выбрать свой ВУЗ и группу.
+            </p>
+            <div className="flex flex-col space-y-2">
+              <button 
+                onClick={() => {
+                  setShowApplicantModal(false);
+                  navigate('/leaderboard');
+                }}
+                className="bg-brand hover:bg-brand-dark text-white font-bold py-2 px-4 rounded-lg transition-colors"
+              >
+                Выбрать ВУЗ
+              </button>
+              <button 
+                onClick={() => setShowApplicantModal(false)}
+                className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg transition-colors"
+              >
+                Продолжить как абитуриент
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};

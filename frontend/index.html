@@ -4,6 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Университетское приложение</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- MAX Bridge -->
+    <script src="https://st.max.ru/js/max-web-app.js"></script>
+
+    <!-- Дополнительные стили для анимаций и индивидуального дизайна.
+         Эти правила определяют простую анимацию появления для элементов
+         расписания и событий. Класс `.fade-in` плавно увеличивает
+         непрозрачность и перемещает элемент на место. Вы можете
+         расширить этот блок любыми кастомными keyframes по аналогии. -->
+    <style>
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .fade-in {
+        animation: fadeIn 0.6s ease-out forwards;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
