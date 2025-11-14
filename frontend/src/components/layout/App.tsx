@@ -58,8 +58,8 @@ const App: React.FC = () => {
         <div className={darkMode ? 'dark' : ''}>
           <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 flex flex-col font-sans">
             
-            {/* Debugging Modal */}
-            {isMaxApp && currentUser && (
+            {/* Debugging Modal - Temporarily Disabled */}
+            {/* {isMaxApp && currentUser && (
               <div className="fixed top-4 right-4 z-50">
                 <button
                   onClick={() => setShowDebugModal(true)}
@@ -68,9 +68,9 @@ const App: React.FC = () => {
                   Debug
                 </button>
               </div>
-            )}
+            )} */}
 
-            {showDebugModal && isMaxApp && currentUser && (
+            {/* {showDebugModal && isMaxApp && currentUser && (
               <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 text-left max-w-md w-full relative">
                   <h2 className="text-xl font-bold mb-4">MAX User Data (Debug)</h2>
@@ -85,9 +85,10 @@ const App: React.FC = () => {
                   </button>
                 </div>
               </div>
-            )}
+            )} */}
 
-            {isApplicant && (
+            {/* Applicant Modal - Temporarily Disabled */}
+            {/* {isApplicant && (
               <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 text-center">
                   <h2 className="text-xl font-bold mb-2">Добро пожаловать!</h2>
@@ -102,10 +103,10 @@ const App: React.FC = () => {
                   </button>
                 </div>
               </div>
-            )}
+            )} */}
 
             <div style={{ padding: '2rem', textAlign: 'center', fontSize: '1.5rem' }}>
-              Context Providers and Modals are active.
+              Context Providers are active. Modals are disabled.
             </div>
           </div>
         </div>
