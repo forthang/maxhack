@@ -37,7 +37,7 @@ interface UnifiedItem {
   end: Date;
   title: string;
   description: string;
-  type: 'class' | 'event';
+  type: 'class' | 'event' | 'recommendation';
   signup_count?: number | null;
   signed_up?: boolean | null;
   sourceId: number; // Original ID from the backend
@@ -49,10 +49,11 @@ const SchedulePage: React.FC = () => {
   const navigate = useNavigate();
 
   const [items, setItems] = useState<UnifiedItem[]>([]);
+  const [recommendedEvents, setRecommendedEvents] = useState<BackendEventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState<number>(0);
   const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
-  const [view, setView] = useState<'schedule' | 'events' | 'my-events'>('schedule');
+  const [view, setView] = useState<'schedule' | 'events' | 'my-events' | 'recommendations'>('schedule');
   const [isTogglingSignup, setIsTogglingSignup] = useState<number | null>(null);
 
   const loadData = async () => {
@@ -62,9 +63,10 @@ const SchedulePage: React.FC = () => {
     }
     setLoading(true);
     try {
-      const [scheduleResp, eventsResp] = await Promise.all([
+      const [scheduleResp, eventsResp, recommendationsResp] = await Promise.all([
         fetch(`/api/schedule?user_id=${currentUser.id}`),
         fetch(`/api/events?user_id=${currentUser.id}`),
+        fetch(`/api/recommendations/${currentUser.id}`),
       ]);
       
       const unified: UnifiedItem[] = [];
@@ -106,6 +108,12 @@ const SchedulePage: React.FC = () => {
           });
         });
       }
+
+      if (recommendationsResp.ok) {
+        const recommendationsData: BackendEventItem[] = await recommendationsResp.json();
+        setRecommendedEvents(recommendationsData);
+      }
+
       setItems(unified);
     } catch (e) {
       console.error(e);
@@ -234,8 +242,9 @@ const SchedulePage: React.FC = () => {
       
       <div className="flex mb-4 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
         <button onClick={() => setView('schedule')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 transition-colors ${view === 'schedule' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-brand/80'}`}>Сетка</button>
-        <button onClick={() => setView('events')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 transition-colors ${view === 'events' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-brand/80'}`}>События</button>
+        <button onClick={() => setView('events')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 transition-colors ${view === 'events' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-brand/80'}`}>Все события</button>
         <button onClick={() => setView('my-events')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 transition-colors ${view === 'my-events' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-brand/80'}`}>Мои события</button>
+        <button onClick={() => setView('recommendations')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 transition-colors ${view === 'recommendations' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-brand/80'}`}>Рекомендации</button>
       </div>
 
       {loading ? <Spinner /> : (
@@ -306,6 +315,28 @@ const SchedulePage: React.FC = () => {
                 />
               ))}
               {items.filter(i => i.signed_up).length === 0 && <p className="text-gray-500">Вы не записаны ни на одно событие.</p>}
+            </div>
+          )}
+          {view === 'recommendations' && (
+            <div className="space-y-4">
+              {recommendedEvents.length > 0 ? (
+                recommendedEvents.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    start={new Date(event.event_time)}
+                    end={new Date(new Date(event.event_time).getTime() + event.duration_hours * 60 * 60 * 1000)}
+                    title={event.title}
+                    description={event.description}
+                    auditorium={event.auditorium}
+                    signedUp={event.signed_up || false}
+                    onDetails={() => navigate(`/event/${event.id}`)}
+                    // For recommendations, we don't offer direct signup/unsubscribe here
+                    // The user can go to the event details page to do that.
+                  />
+                ))
+              ) : (
+                <p className="text-center text-gray-500">Пока нет рекомендаций.</p>
+              )}
             </div>
           )}
         </>

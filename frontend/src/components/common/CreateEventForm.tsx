@@ -10,6 +10,8 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [eventTime, setEventTime] = useState('');
+  const [durationHours, setDurationHours] = useState(2); // Default to 2 hours
+  const [auditorium, setAuditorium] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +31,8 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
           title,
           description,
           event_time: new Date(eventTime).toISOString(),
-          // creator_id is no longer needed on the backend
+          duration_hours: durationHours,
+          auditorium: auditorium || null, // Send null if empty
         }),
       });
       if (!response.ok) {
@@ -41,6 +44,8 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
       setTitle('');
       setDescription('');
       setEventTime('');
+      setDurationHours(2);
+      setAuditorium('');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -79,6 +84,28 @@ const CreateEventForm: React.FC<CreateEventFormProps> = ({ onCreated }) => {
           id="eventTime"
           value={eventTime}
           onChange={(e) => setEventTime(e.target.value)}
+          className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+        />
+      </div>
+      <div>
+        <label htmlFor="durationHours" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Длительность (часы)</label>
+        <input
+          type="number"
+          id="durationHours"
+          value={durationHours}
+          onChange={(e) => setDurationHours(parseInt(e.target.value))}
+          min="1"
+          max="12"
+          className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+        />
+      </div>
+      <div>
+        <label htmlFor="auditorium" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Аудитория/Место</label>
+        <input
+          type="text"
+          id="auditorium"
+          value={auditorium}
+          onChange={(e) => setAuditorium(e.target.value)}
           className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
         />
       </div>
