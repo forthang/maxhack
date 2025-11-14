@@ -1,11 +1,16 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../context/AppContext';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
-// Define the type based on the backend schema
-interface ScheduleItem {
+// Common reusable UI components
+import ClassCard from '../components/common/ClassCard';
+import EventCard from '../components/common/EventCard';
+import CreateEventForm from '../components/common/CreateEventForm';
+
+// Types
+interface BackendScheduleItem {
   id: number;
   start_time: string;
   end_time: string;
@@ -14,105 +19,275 @@ interface ScheduleItem {
   group_id: number | null;
 }
 
+interface BackendEventItem {
+  id: number;
+  event_time: string;
+  title: string;
+  description: string;
+  duration_hours: number;
+  auditorium: string | null;
+  signup_count: number | null;
+  signed_up: boolean | null;
+}
+
+interface UnifiedItem {
+  id: number; // Unique ID for React key
+  start: Date;
+  end: Date;
+  title: string;
+  description: string;
+  type: 'class' | 'event';
+  signup_count?: number | null;
+  signed_up?: boolean | null;
+  sourceId: number; // Original ID from the backend
+  auditorium?: string | null;
+}
+
 const SchedulePage: React.FC = () => {
   const { currentUser } = useContext(UserContext);
-  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  useEffect(() => {
+  const [items, setItems] = useState<UnifiedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [weekOffset, setWeekOffset] = useState<number>(0);
+  const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
+  const [view, setView] = useState<'schedule' | 'events' | 'my-events'>('schedule');
+
+  const loadData = async () => {
     if (!currentUser) {
-      setIsLoading(false);
+      setLoading(false);
       return;
     }
+    setLoading(true);
+    try {
+      const [scheduleResp, eventsResp] = await Promise.all([
+        fetch(`/api/schedule?user_id=${currentUser.id}`),
+        fetch(`/api/events?user_id=${currentUser.id}`),
+      ]);
+      
+      const unified: UnifiedItem[] = [];
 
-    const fetchSchedule = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`/api/schedule?user_id=${currentUser.id}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch schedule');
-        }
-        const data: ScheduleItem[] = await response.json();
-        setSchedule(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
+      if (scheduleResp.ok) {
+        const scheduleData: BackendScheduleItem[] = await scheduleResp.json();
+        scheduleData.forEach((item) => {
+          unified.push({
+            id: item.id,
+            start: new Date(item.start_time),
+            end: new Date(item.end_time),
+            title: item.description,
+            description: item.description,
+            type: 'class',
+            sourceId: item.id,
+            auditorium: item.auditorium,
+            // 'signed_up' for classes is not supported by backend, default to false
+            signed_up: false, 
+          });
+        });
       }
-    };
 
-    fetchSchedule();
+      if (eventsResp.ok) {
+        const eventsData: BackendEventItem[] = await eventsResp.json();
+        eventsData.forEach((ev) => {
+          const start = new Date(ev.event_time);
+          const duration = ev.duration_hours ?? 2;
+          const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
+          unified.push({
+            id: ev.id + 10000, // Offset to avoid key collision with schedule items
+            start,
+            end,
+            title: ev.title,
+            description: ev.description,
+            type: 'event',
+            signup_count: ev.signup_count,
+            signed_up: ev.signed_up,
+            sourceId: ev.id,
+            auditorium: ev.auditorium,
+          });
+        });
+      }
+      setItems(unified);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [currentUser]);
 
-  const groupedSchedule = schedule.reduce((acc, item) => {
-    const date = format(new Date(item.start_time), 'yyyy-MM-dd');
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(item);
-    return acc;
-  }, {} as Record<string, ScheduleItem[]>);
+  const handleEventCreated = async () => {
+    setShowCreateForm(false);
+    await loadData();
+  };
 
-  const sortedDates = Object.keys(groupedSchedule).sort();
+  const handleEventSignup = async (item: UnifiedItem) => {
+    if (!currentUser) return;
+    try {
+      const resp = await fetch(`/api/events/${item.sourceId}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id }),
+      });
+      if (resp.ok) await loadData();
+    } catch (e) { console.error(e); }
+  };
 
-  if (isLoading) {
-    return <div className="p-4 text-center">Загрузка расписания...</div>;
-  }
+  const handleEventUnsubscribe = async (item: UnifiedItem) => {
+    if (!currentUser) return;
+    try {
+      const resp = await fetch(`/api/events/${item.sourceId}/unsubscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id }),
+      });
+      if (resp.ok) await loadData();
+    } catch (e) { console.error(e); }
+  };
 
-  if (error) {
-    return <div className="p-4 text-center text-red-500">Ошибка: {error}</div>;
-  }
+  // Grid rendering logic
+  const now = new Date();
+  const currentDayOfWeek = (now.getDay() + 6) % 7;
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - currentDayOfWeek + weekOffset * 7);
+  weekStart.setHours(0, 0, 0, 0);
 
-  if (!currentUser || !currentUser.group_id) {
+  const days = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return d;
+  });
+
+  const itemsForGrid = items
+    .map((item) => {
+      const start = item.start;
+      const end = item.end;
+      const diffStart = start.getTime() - weekStart.getTime();
+      const dayIndex = Math.floor(diffStart / (24 * 60 * 60 * 1000));
+      if (dayIndex < 0 || dayIndex > 6) return null;
+      
+      const startHour = start.getHours();
+      let span = Math.ceil((end.getTime() - start.getTime()) / (60 * 60 * 1000));
+      if (span < 1) span = 1;
+      if (startHour + span > 24) span = 24 - startHour;
+
+      return { ...item, dayIndex, startHour, span };
+    })
+    .filter(Boolean) as Array<UnifiedItem & { dayIndex: number; startHour: number; span: number }>;
+
+  const formatDay = (date: Date): string => {
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', weekday: 'short' });
+  };
+
+  // Render logic
+  if (!currentUser) {
     return (
-      <div className="p-4 text-center">
-        <h2 className="text-xl font-semibold mb-2">Расписание пусто</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Вы еще не присоединены к учебной группе.
-        </p>
-        <Link to="/leaderboard" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
-          Выбрать свой ВУЗ и группу
-        </Link>
-      </div>
-    );
+        <div className="p-4 text-center">
+            <h2 className="text-xl font-semibold mb-2">Расписание недоступно</h2>
+            <p className="text-gray-600 dark:text-gray-400">Войдите, чтобы увидеть ваше расписание.</p>
+        </div>
+    )
+  }
+  if (!currentUser.group_id) {
+    // This is handled by the global AppModal, but as a fallback:
+    return (
+        <div className="p-4 text-center">
+            <h2 className="text-xl font-semibold mb-2">Расписание пусто</h2>
+            <p className="text-gray-600 dark:text-gray-400">Присоединитесь к группе, чтобы увидеть расписание.</p>
+        </div>
+    )
   }
 
   return (
     <div className="p-4 pb-20">
-      <h2 className="text-2xl font-semibold mb-4">Расписание</h2>
-      {sortedDates.length === 0 && !isLoading && (
-        <p className="text-center text-gray-500">Для вашей группы нет расписания.</p>
-      )}
-      <div className="space-y-6">
-        {sortedDates.map((date) => (
-          <div key={date}>
-            <h3 className="text-lg font-semibold mb-2 capitalize text-gray-800 dark:text-gray-200">
-              {format(new Date(date), 'd MMMM, EEEE', { locale: ru })}
-            </h3>
-            <div className="space-y-3">
-              {groupedSchedule[date].map((item) => (
-                <div key={item.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">{item.description}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {format(new Date(item.start_time), 'HH:mm')} - {format(new Date(item.end_time), 'HH:mm')}
-                      </p>
-                    </div>
-                    {item.auditorium && (
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Аудитория</p>
-                        <p className="font-medium text-gray-800 dark:text-gray-200">{item.auditorium}</p>
-                      </div>
-                    )}
-                  </div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-semibold">Расписание</h2>
+        {view === 'schedule' && (
+          <div className="flex space-x-2">
+            <button onClick={() => setWeekOffset((p) => p - 1)} className="px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">&lt;</button>
+            <button onClick={() => setWeekOffset((p) => p + 1)} className="px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">&gt;</button>
+          </div>
+        )}
+        {view === 'my-events' && (
+          <button onClick={() => setShowCreateForm((p) => !p)} className="px-4 py-1 rounded bg-blue-600 text-white text-sm">{showCreateForm ? 'Отмена' : 'Создать событие'}</button>
+        )}
+      </div>
+      
+      <div className="flex mb-4 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+        <button onClick={() => setView('schedule')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 ${view === 'schedule' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Сетка</button>
+        <button onClick={() => setView('events')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 ${view === 'events' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>События</button>
+        <button onClick={() => setView('my-events')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 ${view === 'my-events' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Мои события</button>
+      </div>
+
+      {loading ? <p>Загрузка...</p> : (
+        <>
+          {view === 'schedule' && (
+            <div className="relative overflow-x-auto rounded-lg shadow-inner">
+              <div className="min-w-[900px] relative">
+                <div className="grid text-sm" style={{ gridTemplateColumns: '80px repeat(7, 1fr)', gridTemplateRows: `40px repeat(24, 60px)` }}>
+                  <div className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"></div>
+                  {days.map((day, idx) => <div key={idx} className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center font-medium text-gray-700 dark:text-gray-200">{formatDay(day)}</div>)}
+                  {Array.from({ length: 24 }).map((_, hour) => (
+                    <React.Fragment key={hour}>
+                      <div className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-1 text-right pr-2 text-gray-600 dark:text-gray-400">{String(hour).padStart(2, '0')}:00</div>
+                      {Array.from({ length: 7 }).map((__, col) => <div key={`${hour}-${col}`} className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"></div>)}
+                    </React.Fragment>
+                  ))}
                 </div>
+                <div className="absolute inset-0">
+                  {itemsForGrid.map((item) => (
+                    <div
+                      key={item.id}
+                      className="fade-in z-10 rounded-md p-2 text-xs font-medium flex flex-col justify-between shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                      style={{
+                        position: 'absolute',
+                        left: `calc(80px + (100% - 80px) * ${item.dayIndex} / 7)`,
+                        top: `${40 + item.startHour * 60}px`,
+                        width: 'calc((100% - 80px) / 7)',
+                        height: `${item.span * 60}px`,
+                        backgroundColor: item.type === 'event' ? 'rgba(99, 102, 241, 0.9)' : 'rgba(16, 185, 129, 0.9)',
+                        color: 'white',
+                      }}
+                      onClick={() => navigate(item.type === 'event' ? `/event/${item.sourceId}`: `/schedule/${item.sourceId}`)}
+                    >
+                      <div className="font-semibold truncate">{item.title}</div>
+                      {item.auditorium && <div className="text-[10px] opacity-70 truncate">{item.auditorium}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {view === 'events' && (
+            <div className="space-y-4">
+              {items.filter(i => i.type === 'event').sort((a, b) => a.start.getTime() - b.start.getTime()).map(item => (
+                <EventCard
+                  key={item.id}
+                  {...item}
+                  onDetails={() => navigate(`/event/${item.sourceId}`)}
+                  onSignup={() => handleEventSignup(item)}
+                  onUnsubscribe={() => handleEventUnsubscribe(item)}
+                />
               ))}
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+          {view === 'my-events' && (
+            <div className="space-y-4">
+              {showCreateForm && <CreateEventForm onCreated={handleEventCreated} />}
+              {items.filter(i => i.signed_up).map(item => (
+                <EventCard
+                  key={item.id}
+                  {...item}
+                  onDetails={() => navigate(`/event/${item.sourceId}`)}
+                  onUnsubscribe={() => handleEventUnsubscribe(item)}
+                />
+              ))}
+              {items.filter(i => i.signed_up).length === 0 && <p className="text-gray-500">Вы не записаны ни на одно событие.</p>}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
