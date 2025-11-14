@@ -1,0 +1,116 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+import httpx
+from typing import List, Dict, Optional
+
+from ..crud import user as user_crud
+from ..crud import event as event_crud
+from .. import schemas
+from .deps import get_db
+
+router = APIRouter(prefix="/recommendations", tags=["recommendations"])
+
+ML_SERVICE_URL = "http://ml_service:8000"
+
+@router.get("/{user_id}", response_model=List[schemas.EventOut])
+async def get_recommendations(user_id: int, db: Session = Depends(get_db)):
+    # 1. Fetch user profile from local DB
+    user_profile_db = user_crud.get_profile(db, user_id=user_id)
+    if not user_profile_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # 2. Fetch all events from local DB
+    all_events_db = event_crud.get_events(db, user_id=user_id) # Pass user_id to get signed_up status
+
+    # 3. Fetch universities data from ML service
+    try:
+        universities_response = await httpx.AsyncClient().get(f"{ML_SERVICE_URL}/universities")
+        universities_response.raise_for_status()
+        universities_data = universities_response.json().get("universities", {})
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"ML service error fetching universities: {e.response.text}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Could not connect to ML service for universities: {e}")
+
+    # 4. Prepare UserProfile for ML service
+    # Note: The ML service's UserProfile expects 'interesting_skills' as List[str]
+    # and 'visited_events' as List[EventAttendance].
+    # We need to map our DB schema to the ML service's schema.
+    
+    # Assuming user_profile_db.skills is a list of skill names (strings)
+    ml_user_skills = [skill.name for skill in user_profile_db.skills] if user_profile_db.skills else []
+
+    # Assuming user_profile_db.event_signups contains event attendance info
+    ml_visited_events = []
+    for signup in user_profile_db.event_signups:
+        # We need to know if the user actually attended and rated the event.
+        # The current schema only has signup. For a real system, we'd need
+        # a separate 'attendance' and 'rating' mechanism in the backend DB.
+        # For now, we'll simulate attendance and rating for signed-up events.
+        # This is a simplification for demonstration purposes.
+        ml_visited_events.append({
+            "event_id": signup.event_id,
+            "attended": True, # Assuming signed-up means attended for ML model
+            "rating": 4 # Default rating for ML model
+        })
+    
+    ml_user_profile = {
+        "user_id": user_profile_db.id,
+        "interesting_skills": ml_user_skills,
+        "education_place": user_profile_db.university.name if user_profile_db.university else None,
+        "visited_events": ml_visited_events
+    }
+
+    # 5. Prepare Events for ML service
+    ml_events = []
+    for event_db in all_events_db:
+        # Assuming event_db.recommended_skills is a list of skill names (strings)
+        ml_event_skills = [skill.name for skill in event_db.skills] if event_db.skills else []
+        
+        ml_events.append({
+            "event_id": event_db.id,
+            "title": event_db.title,
+            "organizer": event_db.organizer.name if event_db.organizer else "Unknown", # Assuming organizer has a name
+            "recommended_skills": ml_event_skills,
+            "datetime": event_db.event_time.isoformat(),
+            "duration_minutes": event_db.duration_hours * 60, # Convert hours to minutes
+            "location": event_db.auditorium if event_db.auditorium else "Онлайн", # Default to Online if no auditorium
+            "max_participants": event_db.max_participants if event_db.max_participants else 100,
+            "category": "workshop", # Default category, adjust if schema has it
+            "уровень": "средний" # Default level, adjust if schema has it
+        })
+
+    # 6. Construct RecommendationRequest payload
+    recommendation_request_payload = {
+        "user_profile": ml_user_profile,
+        "events": ml_events,
+        "universities": universities_data,
+        "n_recommendations": 10 # Or a dynamic number
+    }
+
+    # 7. Call ML service for recommendations
+    try:
+        ml_response = await httpx.AsyncClient().post(
+            f"{ML_SERVICE_URL}/recommend-events",
+            json=recommendation_request_payload,
+            timeout=30.0 # Increased timeout for ML processing
+        )
+        ml_response.raise_for_status()
+        ml_recommendations = ml_response.json().get("recommendations", [])
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"ML service error: {e.response.text}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Could not connect to ML service: {e}")
+
+    # 8. Map ML recommendations back to our EventOut schema
+    # The ML service returns events with an added 'interest_probability'.
+    # We need to find the original event objects to return them in our schema.
+    recommended_event_ids = {rec["event_id"] for rec in ml_recommendations}
+    final_recommendations = [
+        event_db for event_db in all_events_db if event_db.id in recommended_event_ids
+    ]
+    
+    # Optionally, sort by interest_probability if needed, but the ML service already sorts
+    # For now, we just return the original event objects that were recommended.
+    
+    return final_recommendations

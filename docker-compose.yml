@@ -20,6 +20,16 @@ services:
     expose:
       - "8000"
 
+  ml_service:
+    build: ./ML
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    depends_on:
+      - db # Assuming it might need the DB to be up, or services it interacts with do.
+    expose:
+      - "8000" # FastAPI app runs on port 8000 inside the container
+
   frontend:
     build:
       context: ./frontend

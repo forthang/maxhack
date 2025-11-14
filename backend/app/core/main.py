@@ -28,6 +28,7 @@ from app.api import (
     profile_router,
     reviews_router,
     auth_router,
+    recommendations_router,
 )
 
 # Configure logging
