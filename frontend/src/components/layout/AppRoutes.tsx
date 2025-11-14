@@ -29,7 +29,6 @@ const NavLink: React.FC<{ to: string; label: string; icon: React.ReactNode }> = 
 };
 
 export const AppRoutes: React.FC<{ isApplicant: boolean }> = ({ isApplicant }) => {
-  console.log('[Render] AppRoutes');
 
   return (
     <>

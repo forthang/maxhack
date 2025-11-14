@@ -22,8 +22,6 @@ export const useInitialUserLoad = (): MaxAppHook => {
         const webApp = window.WebApp;
 
         if (!webApp || !webApp.initData) {
-          const errorMsg = "MAX Bridge data not found. Using mock user data for development.";
-          console.warn(errorMsg);
           // Provide mock user data for development/testing
           payload = {
             id: -1, // Use a distinct ID for mock user
