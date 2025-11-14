@@ -7,5 +7,6 @@ class Group(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
     university_id = Column(Integer, ForeignKey("university.id"))
+    university = relationship("University", back_populates="groups")
     students = relationship("User", back_populates="group")
     schedule_items = relationship("ScheduleItem", back_populates="group")

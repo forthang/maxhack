@@ -7,3 +7,4 @@ class University(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
     students = relationship("User", back_populates="university")
+    groups = relationship("Group", back_populates="university")
