@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom'; // Temporarily removed for debugging
 import { useInitialUserLoad } from '../../hooks/useMaxApp';
 import { ThemeContext, UserContext } from '../../context/AppContext';
 import { User } from '../../types/user';
@@ -18,7 +18,7 @@ import CourseDetailsPage from '../../pages/CourseDetailsPage';
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Temporarily removed for debugging
   
   // This is now the single source of truth for the user state.
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -116,4 +116,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
 
