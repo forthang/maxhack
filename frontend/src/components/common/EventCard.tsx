@@ -57,7 +57,15 @@ const EventCard: React.FC<EventCardProps> = ({
           )
         )}
         <button
-// ... (rest of the file is the same)
-
+        <button
+          onClick={onDetails}
+          className="px-3 py-1 text-sm rounded-md bg-blue-500 text-white hover:bg-blue-600"
+        >
+          Подробнее
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export default EventCard;
