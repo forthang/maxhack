@@ -86,6 +86,7 @@ async def get_recommendations(user_id: int, db: Session = Depends(get_db)):
     }
 
     # 7. Call ML service for recommendations
+    ml_recommendations = []
     try:
         ml_response = await httpx.AsyncClient().post(
             f"{ML_SERVICE_URL}/recommend-events",
@@ -94,10 +95,23 @@ async def get_recommendations(user_id: int, db: Session = Depends(get_db)):
         )
         ml_response.raise_for_status()
         ml_recommendations = ml_response.json().get("recommendations", [])
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=f"ML service error: {e.response.text}")
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Could not connect to ML service: {e}")
+    except (httpx.HTTPStatusError, httpx.RequestError) as e:
+        print(f"Warning: ML service call failed or returned error: {e}. Using fallback recommendations.")
+        # Fallback: Log the error and proceed to use fallback recommendations
+        # You might want to log 'e.response.text' for HTTPStatusError
+    
+    # Fallback mechanism: If no recommendations from ML service, provide some default ones
+    if not ml_recommendations:
+        # Get some existing event IDs from all_events_db for fallback
+        # Prioritize events that the user has not signed up for
+        existing_event_ids = [event.id for event in all_events_db if not event.signed_up]
+        
+        # Take up to n_recommendations from existing events
+        fallback_event_ids = existing_event_ids[:recommendation_request_payload["n_recommendations"]]
+        
+        # Construct mock ml_recommendations for the fallback
+        ml_recommendations = [{"event_id": eid, "interest_probability": 0.5} for eid in fallback_event_ids]
+
 
     # 8. Map ML recommendations back to our EventOut schema
     # The ML service returns events with an added 'interest_probability'.
