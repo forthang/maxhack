@@ -60,7 +60,10 @@ export const AppModals: React.FC<AppModalsProps> = ({
             </p>
             <div className="flex flex-col space-y-2">
               <button 
-                onClick={() => navigate('/leaderboard')}
+                onClick={() => {
+                  setShowApplicantModal(false);
+                  navigate('/leaderboard');
+                }}
                 className="bg-brand hover:bg-brand-dark text-white font-bold py-2 px-4 rounded-lg transition-colors"
               >
                 Выбрать ВУЗ

@@ -15,11 +15,12 @@ import { CourseNode } from './CourseGraph'; // Import CourseNode interface
 interface FlowRendererProps {
   root: CourseNode;
   completed: { [key: string]: boolean };
+  onComplete: (node: CourseNode) => void;
 }
 
 const nodeTypes = { customCourse: CustomCourseNode };
 
-const FlowRenderer: React.FC<FlowRendererProps> = ({ root, completed }) => {
+const FlowRenderer: React.FC<FlowRendererProps> = ({ root, completed, onComplete }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -81,6 +82,7 @@ const FlowRenderer: React.FC<FlowRendererProps> = ({ root, completed }) => {
           label: course.title,
           course,
           done,
+          onComplete,
         },
         position: { x: pos.x - minX, y: pos.y },
         draggable: false,
@@ -92,7 +94,7 @@ const FlowRenderer: React.FC<FlowRendererProps> = ({ root, completed }) => {
     requestAnimationFrame(() => {
       fitView();
     });
-  }, [root, completed, fitView]);
+  }, [root, completed, fitView, onComplete]);
 
   return (
     <ReactFlow

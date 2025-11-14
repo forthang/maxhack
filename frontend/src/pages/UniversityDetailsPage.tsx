@@ -40,6 +40,7 @@ const UniversityDetailsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [activeTab, setActiveTab] = useState<'info' | 'groups'>('info');
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -96,52 +97,78 @@ const UniversityDetailsPage: React.FC = () => {
       <h2 className="text-2xl font-semibold mb-2">{university.name}</h2>
       <p className="text-gray-600 dark:text-gray-400 mb-6">Очки: {university.points}</p>
 
-      {currentUser && !currentUser.group_id && (
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6">
-          <h3 className="text-lg font-semibold mb-3">Присоединиться к группе</h3>
-          <select
-            value={selectedGroupId}
-            onChange={(e) => setSelectedGroupId(e.target.value)}
-            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 mb-3"
-          >
-            <option value="">Выберите вашу группу</option>
-            {allGroups.map(group => (
-              <option key={group.id} value={group.id}>{group.name}</option>
-            ))}
-          </select>
-          <button
-            onClick={handleJoinGroup}
-            disabled={!selectedGroupId || isJoining}
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
-          >
-            {isJoining ? 'Присоединение...' : 'Присоединиться'}
-          </button>
+      {/* Tabs */}
+      <div className="flex space-x-2 border-b border-gray-200 dark:border-gray-700 mb-4">
+        <button
+          onClick={() => setActiveTab('info')}
+          className={`py-2 px-4 text-sm font-medium ${activeTab === 'info' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          Информация
+        </button>
+        <button
+          onClick={() => setActiveTab('groups')}
+          className={`py-2 px-4 text-sm font-medium ${activeTab === 'groups' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          Группы и студенты
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'info' && (
+        <div className="fade-in">
+          <h3 className="text-xl font-semibold mb-4">Об университете</h3>
+          <p className="mb-6">Здесь будет общая информация об университете.</p>
+          
+          {currentUser && !currentUser.group_id && (
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold mb-3">Присоединиться к группе</h3>
+              <select
+                value={selectedGroupId}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 mb-3"
+              >
+                <option value="">Выберите вашу группу</option>
+                {allGroups.map(group => (
+                  <option key={group.id} value={group.id}>{group.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleJoinGroup}
+                disabled={!selectedGroupId || isJoining}
+                className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                {isJoining ? 'Присоединение...' : 'Присоединиться'}
+              </button>
+            </div>
+          )}
+
+          {currentUser && currentUser.university_id === university.id && currentUser.group_id && (
+            <div className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-4 rounded-lg">
+                Вы уже состоите в группе этого университета.
+            </div>
+          )}
         </div>
       )}
 
-      {currentUser && currentUser.university_id === university.id && currentUser.group_id && (
-         <div className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-4 rounded-lg mb-6">
-            Вы состоите в группе этого университета.
-         </div>
+      {activeTab === 'groups' && (
+        <div className="space-y-4 fade-in">
+          {university.specializations.map(spec => (
+            <div key={spec.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+              <h4 className="text-xl font-medium text-gray-800 dark:text-gray-200">{spec.name}</h4>
+              {spec.courses.map(course => (
+                <div key={course.id} className="pl-4 mt-2">
+                  <h5 className="text-lg font-normal text-gray-700 dark:text-gray-300">Курс {course.year}</h5>
+                  {course.groups.map(group => (
+                    <div key={group.id} className="pl-4 mt-1">
+                      <p className="text-md text-gray-600 dark:text-gray-400">{group.name} ({group.students.length} студентов)</p>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       )}
-
-      <div className="space-y-4">
-        {university.specializations.map(spec => (
-          <div key={spec.id}>
-            <h4 className="text-xl font-medium text-gray-800 dark:text-gray-200">{spec.name}</h4>
-            {spec.courses.map(course => (
-              <div key={course.id} className="pl-4 mt-2">
-                <h5 className="text-lg font-normal text-gray-700 dark:text-gray-300">Курс {course.year}</h5>
-                {course.groups.map(group => (
-                  <div key={group.id} className="pl-4 mt-1">
-                    <p className="text-md text-gray-600 dark:text-gray-400">{group.name} ({group.students.length} студентов)</p>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
     </div>
   );
 };

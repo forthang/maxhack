@@ -18,12 +18,12 @@ interface CourseGraphProps {
   onComplete: (node: CourseNode) => void; // This prop is not used by the Flow components, but let's keep it for now.
 }
 
-const CourseGraph: React.FC<CourseGraphProps> = ({ root, completed }) => {
+const CourseGraph: React.FC<CourseGraphProps> = ({ root, completed, onComplete }) => {
   // The onComplete logic is handled inside the CustomCourseNode, not passed here.
   // This component just sets up the React Flow provider and renderer.
   return (
     <div style={{ height: '600px' }} className="rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
-      <FlowWrapper root={root} completed={completed} />
+      <FlowWrapper root={root} completed={completed} onComplete={onComplete} />
     </div>
   );
 };
