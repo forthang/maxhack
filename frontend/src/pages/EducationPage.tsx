@@ -1,73 +1,24 @@
 import React, { useState, useEffect, useContext } from 'react';
-
-/**
- * Компонент курсов: показывает дорожные карты по специальностям. Пользователь
- * выбирает направление (например, программист), затем открываются курсы в
- * виде списка. При прохождении курса начисляются опыт (xp) и монеты (coins),
- * которые сохраняются в localStorage и отображаются в профиле. Это
- * упрощённая игровая механика для мотивации обучения.
- */
-
-interface Course {
-  title: string;
-  xp: number;
-  coins: number;
-  completed?: boolean;
-}
-
-interface Track {
-  name: string;
-  courses: Course[];
-}
-
-const tracks: Track[] = [
-  {
-    name: 'Программист',
-    courses: [
-      { title: 'Основы JavaScript', xp: 50, coins: 10 },
-      { title: 'Алгоритмы и структуры данных', xp: 70, coins: 15 },
-      { title: 'Веб‑разработка', xp: 80, coins: 20 },
-    ],
-  },
-  {
-    name: 'Лингвист',
-    courses: [
-      { title: 'Фонетика и фонология', xp: 40, coins: 8 },
-      { title: 'Синтаксис и морфология', xp: 60, coins: 12 },
-      { title: 'Психолингвистика', xp: 50, coins: 10 },
-    ],
-  },
-  {
-    name: 'Слесарь',
-    courses: [
-      { title: 'Материаловедение', xp: 30, coins: 5 },
-      { title: 'Инструменты и оборудование', xp: 45, coins: 8 },
-      { title: 'Технологии обработки', xp: 55, coins: 10 },
-    ],
-  },
-  {
-    name: 'Искусственный интеллект',
-    courses: [
-      { title: 'Машинное обучение', xp: 80, coins: 20 },
-      { title: 'Нейронные сети', xp: 90, coins: 25 },
-      { title: 'Этичный ИИ', xp: 40, coins: 8 },
-    ],
-  },
-];
-
 import CourseGraph, { CourseNode } from '../components/CourseGraph';
 import { UserContext } from '../context/AppContext';
 
 const Education: React.FC = () => {
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
   const [completed, setCompleted] = useState<{ [key: string]: boolean }>({});
-  const [xp, setXp] = useState<number>(0);
-  const [coins, setCoins] = useState<number>(0);
-  const { currentUserId } = useContext(UserContext);
+  const { currentUser, setCurrentUser } = useContext(UserContext);
 
-  // Дорожные карты для каждого направления. В реальном приложении эти данные
-  // могут поступать с сервера или редактироваться администраторами. Здесь
-  // представлен пример для программистов и других специальностей.
+  // Derive the 'completed' map from the user context instead of localStorage
+  useEffect(() => {
+    if (currentUser?.completed_courses) {
+      const completedMap = currentUser.completed_courses.reduce((acc, course) => {
+        acc[course.course_id] = true;
+        return acc;
+      }, {} as { [key: string]: boolean });
+      setCompleted(completedMap);
+    }
+  }, [currentUser]);
+
+  // The hardcoded course trees remain for demonstration purposes.
   const courseTrees: { [key: string]: CourseNode } = {
     'Программист': {
       id: 'prog-root',
@@ -149,100 +100,18 @@ const Education: React.FC = () => {
       xp: 0,
       coins: 0,
       children: [
-        {
-          id: 'phonetics',
-          title: 'Фонетика',
-          info: 'Звуковая сторона языка: артикуляция, акустика и восприятие.',
-          xp: 40,
-          coins: 8,
-        },
-        {
-          id: 'syntax',
-          title: 'Синтаксис',
-          info: 'Законы построения предложений и словосочетаний.',
-          xp: 50,
-          coins: 10,
-        },
-      ],
-    },
-    'Слесарь': {
-      id: 'locksmith-root',
-      title: 'Слесарь',
-      info: 'Получите практические навыки работы с металлом и инструментами.',
-      xp: 0,
-      coins: 0,
-      children: [
-        {
-          id: 'materials',
-          title: 'Материаловедение',
-          info: 'Свойства и обработка материалов.',
-          xp: 30,
-          coins: 5,
-        },
-        {
-          id: 'tools',
-          title: 'Инструменты',
-          info: 'Основные инструменты и методы их использования.',
-          xp: 40,
-          coins: 8,
-        },
-      ],
-    },
-    'Искусственный интеллект': {
-      id: 'ai-root',
-      title: 'Искусственный интеллект',
-      info: 'Погрузитесь в машинное обучение, нейронные сети и этику ИИ.',
-      xp: 0,
-      coins: 0,
-      children: [
-        {
-          id: 'ml',
-          title: 'Машинное обучение',
-          info: 'Основы машинного обучения и алгоритмы.',
-          xp: 80,
-          coins: 20,
-        },
-        {
-          id: 'nn',
-          title: 'Нейронные сети',
-          info: 'Глубокие нейронные сети и современные архитектуры.',
-          xp: 90,
-          coins: 25,
-        },
+        { id: 'phonetics', title: 'Фонетика', info: 'Звуковая сторона языка.', xp: 40, coins: 8 },
+        { id: 'syntax', title: 'Синтаксис', info: 'Законы построения предложений.', xp: 50, coins: 10 },
       ],
     },
   };
 
-  // Загрузка прогресса из localStorage
-  useEffect(() => {
-    const storedXp = localStorage.getItem(`userXp_${currentUserId}`);
-    const storedCoins = localStorage.getItem(`userCoins_${currentUserId}`);
-    const storedCompleted = localStorage.getItem(`completedCourses_${currentUserId}`);
-    if (storedXp) setXp(Number(storedXp));
-    if (storedCoins) setCoins(Number(storedCoins));
-    if (storedCompleted) setCompleted(JSON.parse(storedCompleted));
-  }, [currentUserId]);
-
-  // Сохранение прогресса
-  useEffect(() => {
-    try {
-      localStorage.setItem(`userXp_${currentUserId}`, xp.toString());
-      localStorage.setItem(`userCoins_${currentUserId}`, coins.toString());
-      localStorage.setItem(`completedCourses_${currentUserId}`, JSON.stringify(completed));
-    } catch {
-      /* ignore */
-    }
-  }, [xp, coins, completed, currentUserId]);
-
-  // Завершение курса: отмечаем как завершённый, начисляем награды и
-  // синхронизируемся с бэкендом. Если сервер возвращает новые значения
-  // XP/coins, используем их; иначе прибавляем локально. Используем
-  // асинхронную функцию, чтобы дождаться ответа API.
+  // This function now updates the global user state via context.
   const handleComplete = async (node: CourseNode) => {
-    if (completed[node.id]) return;
-    setCompleted((prev) => ({ ...prev, [node.id]: true }));
+    if (completed[node.id] || !currentUser) return;
+
     try {
-      const payload = { user_id: currentUserId, xp: node.xp, coins: node.coins };
+      const payload = { user_id: currentUser.id, xp: node.xp, coins: node.coins };
       const resp = await fetch(
         `/api/profile/courses/${node.id}/complete`,
         {
@@ -252,23 +121,20 @@ const Education: React.FC = () => {
         },
       );
       if (resp.ok) {
-        const data = await resp.json();
-        // Update local XP/coins from response if available
-        if (data.xp !== undefined) setXp(data.xp);
-        if (data.coins !== undefined) setCoins(data.coins);
+        const updatedProfile = await resp.json();
+        // Set the updated profile in the global context
+        setCurrentUser(updatedProfile);
+        if (node.xp > 0 || node.coins > 0) {
+          alert(
+            `Поздравляем! Вы завершили «${node.title}» и получили ${node.xp} XP и ${node.coins} монет.`,
+          );
+        }
       } else {
-        // Fallback: update locally if server call fails
-        setXp((prev) => prev + node.xp);
-        setCoins((prev) => prev + node.coins);
+        const error = await resp.json();
+        alert(`Ошибка: ${error.detail || 'Не удалось завершить курс.'}`);
       }
     } catch {
-      setXp((prev) => prev + node.xp);
-      setCoins((prev) => prev + node.coins);
-    }
-    if (node.xp > 0 || node.coins > 0) {
-      alert(
-        `Поздравляем! Вы завершили «${node.title}» и получили ${node.xp} XP и ${node.coins} монет.`,
-      );
+      alert('Сетевая ошибка. Не удалось завершить курс.');
     }
   };
 
@@ -276,9 +142,7 @@ const Education: React.FC = () => {
     <div className="p-4 pb-20">
       <h2 className="text-2xl font-semibold mb-4">Курсы</h2>
       {!selectedTrack ? (
-        <div
-          className="space-y-3"
-        >
+        <div className="space-y-3">
           <p className="mb-2 text-gray-700 dark:text-gray-300">Выберите направление обучения:</p>
           {Object.keys(courseTrees).map((trackName) => (
             <button

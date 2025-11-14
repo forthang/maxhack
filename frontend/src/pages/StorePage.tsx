@@ -20,31 +20,10 @@ interface StoreProps {
 
 const Store: React.FC<StoreProps> = ({ inline = false }) => {
   const { currentUser, setCurrentUser } = useContext(UserContext);
-  const [purchased, setPurchased] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // This fetch is still needed to get the 'purchases' which are not on the main user object
-  const fetchPurchases = async () => {
-    if (!currentUser?.id) return;
-    setLoading(true);
-    try {
-      const resp = await fetch(`/api/profile/${currentUser.id}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        // We only need purchases from this, as coins are on the currentUser object
-        setPurchased((data.purchases || []).map((p: any) => p.item_id));
-      }
-    } catch (e) {
-      console.error("Failed to load profile for store", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPurchases();
-  }, [currentUser]);
+  // The purchased items are derived directly from the user context.
+  const purchased = currentUser?.purchases?.map(p => p.item_id) || [];
 
   const handleBuy = async (item: Item) => {
     if (!currentUser || currentUser.coins < item.cost) {
@@ -61,9 +40,8 @@ const Store: React.FC<StoreProps> = ({ inline = false }) => {
 
       if (resp.ok) {
         const updatedProfile = await resp.json();
-        // Update the user context with the new coin balance
-        setCurrentUser({ ...currentUser, coins: updatedProfile.coins });
-        setPurchased((updatedProfile.purchases || []).map((p: any) => p.item_id));
+        // Update the entire user profile in the global context
+        setCurrentUser(updatedProfile);
         alert(`Вы приобрели «${item.name}»!`);
       } else {
         const err = await resp.json();
@@ -74,7 +52,8 @@ const Store: React.FC<StoreProps> = ({ inline = false }) => {
     }
   };
 
-  if (loading) {
+  // Loading is now handled by the main App component.
+  if (!currentUser) {
     return <div className={inline ? '' : 'p-4 pb-20'}><p>Загрузка магазина...</p></div>;
   }
 
@@ -86,7 +65,7 @@ const Store: React.FC<StoreProps> = ({ inline = false }) => {
         </button>
       )}
       <h2 className="text-2xl font-semibold mb-4">Магазин</h2>
-      <p className="mb-4 text-gray-800 dark:text-gray-300">Ваш баланс: {currentUser?.coins ?? 0} монет</p>
+      <p className="mb-4 text-gray-800 dark:text-gray-300">Ваш баланс: {currentUser.coins} монет</p>
       {purchased.length > 0 && (
         <p className="mb-4 text-gray-800 dark:text-gray-300 text-sm">
           Купленные товары: {purchased.join(', ')}

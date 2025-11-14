@@ -71,8 +71,8 @@ const Profile: React.FC = () => {
             </div>
 
             <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              <p>ВУЗ: {currentUser.university_id ? `ID ${currentUser.university_id}` : 'Не привязан'}</p>
-              <p>Группа: {currentUser.group_id ? `ID ${currentUser.group_id}` : 'Нет группы'}</p>
+              <p>ВУЗ: {currentUser.university?.name ?? 'Не привязан'}</p>
+              <p>Группа: {currentUser.group?.name ?? 'Нет группы'}</p>
             </div>
 
             <div className="mb-4">

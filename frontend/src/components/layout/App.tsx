@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import PageWrapper from './PageWrapper';
-import { useMaxApp } from '../../hooks/useMaxApp';
+import { useInitialUserLoad } from '../../hooks/useMaxApp';
 import { ThemeContext, UserContext } from '../../context/AppContext';
 import { User } from '../../types/user';
 
 // Import Pages
 import SchedulePage from '../../pages/SchedulePage';
+import EventsPage from '../../pages/EventsPage';
 import LeaderboardPage from '../../pages/LeaderboardPage';
 import EducationPage from '../../pages/EducationPage';
 import ProfilePage from '../../pages/ProfilePage';
@@ -21,28 +22,22 @@ const App: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // This state will be managed by the useMaxApp hook via context
+  // This is now the single source of truth for the user state.
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  const { 
-    currentUser: userFromHook, 
-    isLoading, 
-    error 
-  } = useMaxApp();
+  // The new hook is for initial load only.
+  const { currentUser: initialUser, isLoading, error } = useInitialUserLoad();
 
-  // When the hook provides the user, set it in our state.
-  // This seems redundant, but it's how the original structure was set up.
-  // We'll keep it but bind the context to the direct value from the hook.
+  // This effect runs once when the initial user is loaded to populate the app's state.
   useEffect(() => {
-    if (userFromHook) {
-      setCurrentUser(userFromHook);
+    if (initialUser) {
+      setCurrentUser(initialUser);
     }
-  }, [userFromHook]);
+  }, [initialUser]);
 
-
-  // Memoize context values
+  // Memoize context values. The context now gets the state and setter from App.
   const themeContextValue = useMemo(() => ({ darkMode, toggleTheme: () => setDarkMode(p => !p) }), [darkMode]);
-  const userContextValue = useMemo(() => ({ currentUser: userFromHook, setCurrentUser }), [userFromHook]);
+  const userContextValue = useMemo(() => ({ currentUser, setCurrentUser }), [currentUser]);
 
   const NavLink: React.FC<{ to: string; label: string; icon: React.ReactNode }> = ({ to, label, icon }) => {
     const isActive = location.pathname === to;
@@ -64,16 +59,8 @@ const App: React.FC = () => {
   if (error) {
     return <div className="flex items-center justify-center min-h-screen bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 text-center">Ошибка: {error}</div>;
   }
-
-  // If userFromHook is null, it means we are either still loading or using mock data.
-  // The mock data scenario is handled by useMaxApp, so we can proceed.
-  // The isLoading check above covers the initial loading state.
-  // If we reach here and userFromHook is null, it implies a deeper issue not covered by mock data.
-  // However, for the purpose of this task, we assume mock data will always be provided if real data is missing.
-  // Therefore, we remove the explicit "Не удалось получить данные пользователя." message.
-  // if (!userFromHook) {
-  //   return <div className="flex items-center justify-center min-h-screen bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Не удалось получить данные пользователя.</div>;
-  // }
+  
+  const isApplicant = currentUser && !currentUser.group_id;
 
   // Debugging Modal for MAX Bridge User Data
   const [showDebugModal, setShowDebugModal] = useState(false);
@@ -86,7 +73,7 @@ const App: React.FC = () => {
           <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 flex flex-col font-sans">
             
             {/* Debugging Modal */}
-            {isMaxApp && userFromHook && (
+            {isMaxApp && currentUser && (
               <div className="fixed top-4 right-4 z-50">
                 <button
                   onClick={() => setShowDebugModal(true)}
@@ -97,12 +84,12 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {showDebugModal && isMaxApp && userFromHook && (
+            {showDebugModal && isMaxApp && currentUser && (
               <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 text-left max-w-md w-full relative">
                   <h2 className="text-xl font-bold mb-4">MAX User Data (Debug)</h2>
                   <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm overflow-x-auto">
-                    {JSON.stringify(userFromHook, null, 2)}
+                    {JSON.stringify(currentUser, null, 2)}
                   </pre>
                   <button
                     onClick={() => setShowDebugModal(false)}
@@ -134,6 +121,7 @@ const App: React.FC = () => {
             <main className={`flex-grow pb-24 ${isApplicant ? 'blur-sm' : ''}`}>
                 <Routes location={location} key={location.pathname}>
                   <Route path="/" element={<PageWrapper><SchedulePage /></PageWrapper>} />
+                  <Route path="/events" element={<PageWrapper><EventsPage /></PageWrapper>} />
                   <Route path="/education" element={<PageWrapper><EducationPage /></PageWrapper>} />
                   <Route path="/leaderboard" element={<PageWrapper><LeaderboardPage /></PageWrapper>} />
                   <Route path="/profile" element={<PageWrapper><ProfilePage /></PageWrapper>} />

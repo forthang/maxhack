@@ -1,6 +1,5 @@
 // src/hooks/useMaxApp.ts
-import { useState, useEffect, useContext } from 'react';
-import { UserContext } from '../context/AppContext';
+import { useState, useEffect } from 'react';
 import { User } from '../types/user';
 
 interface MaxAppHook {
@@ -9,31 +8,29 @@ interface MaxAppHook {
   error: string | null;
 }
 
-export const useMaxApp = (): MaxAppHook => {
-  const { currentUser, setCurrentUser } = useContext(UserContext);
+export const useInitialUserLoad = (): MaxAppHook => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const login = async () => {
-      let userData; // Declare userData here
+      let userData;
       try {
         // 1. Check for MAX Bridge
         // @ts-ignore
         const webApp = window.WebApp;
 
         if (!webApp || !webApp.initDataUnsafe || !webApp.initDataUnsafe.user) {
-          const errorMsg = "MAX Bridge data not found (window.WebApp.initDataUnsafe.user is missing). Using mock user data.";
-          if (process.env.NODE_ENV === 'development') {
-            console.warn(errorMsg, "This is expected in a local browser environment if not running within MAX.");
-          }
-          // Provide mock user data for development/testing when MAX Bridge data is unavailable
+          const errorMsg = "MAX Bridge data not found. Using mock user data for development.";
+          console.warn(errorMsg);
+          // Provide mock user data for development/testing
           userData = {
             id: -1, // Use a distinct ID for mock user
             first_name: "Mock",
             last_name: "User",
             username: "mockuser",
-            photo_url: "https://i.pravatar.cc/150?img=68", // Example avatar
+            photo_url: "https://i.pravatar.cc/150?img=68",
             language_code: "ru",
           };
         } else {
@@ -44,7 +41,7 @@ export const useMaxApp = (): MaxAppHook => {
           throw new Error("User ID not found in MAX Bridge data or mock data generation failed.");
         }
         
-        // 2. Call the new /api/auth/login endpoint
+        // 2. Call the /api/auth/login endpoint
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -56,7 +53,7 @@ export const useMaxApp = (): MaxAppHook => {
           throw new Error(errorData.detail || `Login failed with status: ${response.status}`);
         }
 
-        // 3. Set user context
+        // 3. Set user state
         const userProfile: User = await response.json();
         setCurrentUser(userProfile);
 
@@ -67,13 +64,8 @@ export const useMaxApp = (): MaxAppHook => {
       }
     };
 
-    // Only run login if there's no user in the context yet
-    if (!currentUser) {
-      login();
-    } else {
-      setIsLoading(false);
-    }
-  }, [currentUser, setCurrentUser]);
+    login();
+  }, []); // Empty dependency array ensures this runs only once
 
   return { currentUser, isLoading, error };
 };
