@@ -13,6 +13,7 @@ def get_profile(db: Session, user_id: int) -> Optional[schemas.ProfileOut]:
         .joinedload(models.Group.course)
         .joinedload(models.Course.specialization)
         .joinedload(models.Specialization.university),
+        joinedload(models.User.university),
         joinedload(models.User.completed_courses),
         joinedload(models.User.purchases)
     ).filter(models.User.id == user_id).first()
@@ -20,10 +21,8 @@ def get_profile(db: Session, user_id: int) -> Optional[schemas.ProfileOut]:
     if user is None:
         return None
 
-    # This is a workaround to ensure from_orm works as expected with nested models
+    # With the relationships properly loaded, model_validate should handle the nesting.
     profile_data = schemas.ProfileOut.model_validate(user)
-    if user.group and user.group.course and user.group.course.specialization and user.group.course.specialization.university:
-        profile_data.university = schemas.UniversityOut.model_validate(user.group.course.specialization.university)
 
     return profile_data
 

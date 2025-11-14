@@ -134,25 +134,19 @@ def test_leaderboard(client: TestClient):
 
 
 def test_profile(client: TestClient):
-    # fetch user id from DB
-    db = TestingSessionLocal()
-    try:
-        user = db.query(models.User).filter(models.User.id == 1).first()
-    finally:
-        db.close()
-    response = client.get(f"/profile/{user.id}")
+    """Test fetching a user profile, including nested university data."""
+    # The client fixture creates a user with id=1, affiliated with "Test Uni"
+    # but without a group (i.e., an applicant).
+    response = client.get("/profile/1")
     assert response.status_code == 200
+    
     profile = response.json()
     assert profile["first_name"] == "Test"
-    # update profile
-    new_data = {"first_name": "Updated", "last_name": "User"}
-    put_resp = client.put(f"/profile/{user.id}", json=new_data) # PUT is not implemented, should be POST to join-group or similar
-    assert put_resp.status_code == 405 # Method Not Allowed, as PUT /profile/{user_id} is not defined
-    # The test for updating profile needs to be re-evaluated based on new profile update logic
-    # For now, just check the GET
-    # updated_profile = put_resp.json()
-    # assert updated_profile["first_name"] == "Updated"
-    # assert updated_profile["progress"] == 42
+    assert profile["group"] is None
+    
+    # Verify that the university data is present, even without a group
+    assert profile["university"] is not None
+    assert profile["university"]["name"] == "Test Uni"
 
 
 def test_event_signup_and_unsubscribe(client: TestClient):
