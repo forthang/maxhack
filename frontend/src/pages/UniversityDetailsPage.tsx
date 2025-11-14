@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { UserContext } from '../../context/AppContext';
+import { UserContext } from '../context/AppContext';
 
 // Define types based on backend schemas
 interface Student {

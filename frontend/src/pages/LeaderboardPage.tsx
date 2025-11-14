@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { UserContext } from '../../context/AppContext';
+import { UserContext } from '../context/AppContext';
 
 // Define the types based on the backend schemas
 interface University {

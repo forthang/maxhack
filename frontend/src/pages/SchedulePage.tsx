@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { UserContext } from '../../context/AppContext';
+import { UserContext } from '../context/AppContext';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
