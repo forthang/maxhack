@@ -122,28 +122,59 @@ const SchedulePage: React.FC = () => {
     await loadData();
   };
 
-  const handleEventSignup = async (item: UnifiedItem) => {
+  const handleEventSignup = async (itemToUpdate: UnifiedItem) => {
     if (!currentUser) return;
+
+    // Optimistic update
+    const originalItems = items;
+    setItems(prevItems => prevItems.map(item => 
+      item.id === itemToUpdate.id 
+        ? { ...item, signed_up: true, signup_count: (item.signup_count || 0) + 1 }
+        : item
+    ));
+
     try {
-      const resp = await fetch(`/api/events/${item.sourceId}/signup`, {
+      const resp = await fetch(`/api/events/${itemToUpdate.sourceId}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id }),
       });
-      if (resp.ok) await loadData();
-    } catch (e) { console.error(e); }
+      if (!resp.ok) throw new Error('Signup failed');
+      // Optionally, refetch data to ensure consistency
+      await loadData();
+    } catch (e) { 
+      console.error(e);
+      // Revert on error
+      setItems(originalItems);
+      alert('Не удалось записаться на событие.');
+    }
   };
 
-  const handleEventUnsubscribe = async (item: UnifiedItem) => {
+  const handleEventUnsubscribe = async (itemToUpdate: UnifiedItem) => {
     if (!currentUser) return;
+
+    // Optimistic update
+    const originalItems = items;
+    setItems(prevItems => prevItems.map(item => 
+      item.id === itemToUpdate.id 
+        ? { ...item, signed_up: false, signup_count: Math.max(0, (item.signup_count || 0) - 1) }
+        : item
+    ));
+
     try {
-      const resp = await fetch(`/api/events/${item.sourceId}/unsubscribe`, {
+      const resp = await fetch(`/api/events/${itemToUpdate.sourceId}/unsubscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id }),
       });
-      if (resp.ok) await loadData();
-    } catch (e) { console.error(e); }
+      if (!resp.ok) throw new Error('Unsubscribe failed');
+      await loadData();
+    } catch (e) { 
+      console.error(e);
+      // Revert on error
+      setItems(originalItems);
+      alert('Не удалось отписаться от события.');
+    }
   };
 
   // Grid rendering logic

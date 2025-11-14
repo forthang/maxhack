@@ -66,6 +66,8 @@ class University(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
     points = Column(Integer, default=0)
+    description = Column(String, nullable=True)
+    image_url = Column(String, nullable=True)
 
     specializations = relationship("Specialization", back_populates="university")
     users = relationship("User", back_populates="university")

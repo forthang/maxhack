@@ -27,6 +27,8 @@ interface UniversityDetails {
   id: number;
   name: string;
   points: number;
+  description: string | null;
+  image_url: string | null;
   specializations: Specialization[];
 }
 
@@ -75,7 +77,7 @@ const UniversityDetailsPage: React.FC = () => {
       const updatedProfile = await response.json();
       setCurrentUser(updatedProfile);
       alert('Вы успешно присоединились к группе!');
-      navigate('/profile'); // Navigate to profile to see the change
+      navigate('/profile');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -94,49 +96,38 @@ const UniversityDetailsPage: React.FC = () => {
       <button onClick={() => navigate(-1)} className="mb-4 text-blue-600 dark:text-blue-400 hover:underline">
         ← Назад к списку
       </button>
-      <h2 className="text-2xl font-semibold mb-2">{university.name}</h2>
-      <p className="text-gray-600 dark:text-gray-400 mb-6">Очки: {university.points}</p>
+      <div className="flex items-center mb-2">
+        <img src={university.image_url || `https://api.dicebear.com/6.x/initials/svg?seed=${university.name}`} alt={university.name} className="w-16 h-16 rounded-full mr-4 object-contain"/>
+        <div>
+            <h2 className="text-2xl font-semibold">{university.name}</h2>
+            <p className="text-gray-600 dark:text-gray-400">Очки: {university.points}</p>
+        </div>
+      </div>
 
-      {/* Tabs */}
       <div className="flex space-x-2 border-b border-gray-200 dark:border-gray-700 mb-4">
-        <button
-          onClick={() => setActiveTab('info')}
-          className={`py-2 px-4 text-sm font-medium ${activeTab === 'info' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
-        >
+        <button onClick={() => setActiveTab('info')} className={`py-2 px-4 text-sm font-medium ${activeTab === 'info' ? 'border-b-2 border-brand text-brand' : 'text-gray-500 hover:text-gray-700'}`}>
           Информация
         </button>
-        <button
-          onClick={() => setActiveTab('groups')}
-          className={`py-2 px-4 text-sm font-medium ${activeTab === 'groups' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
-        >
+        <button onClick={() => setActiveTab('groups')} className={`py-2 px-4 text-sm font-medium ${activeTab === 'groups' ? 'border-b-2 border-brand text-brand' : 'text-gray-500 hover:text-gray-700'}`}>
           Группы и студенты
         </button>
       </div>
 
-      {/* Tab Content */}
       {activeTab === 'info' && (
-        <div className="fade-in">
-          <h3 className="text-xl font-semibold mb-4">Об университете</h3>
-          <p className="mb-6">Здесь будет общая информация об университете.</p>
+        <div className="fade-in space-y-6">
+          <div>
+            <h3 className="text-xl font-semibold mb-2">Об университете</h3>
+            <p className="text-gray-700 dark:text-gray-300">{university.description}</p>
+          </div>
           
           {currentUser && !currentUser.group_id && (
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
               <h3 className="text-lg font-semibold mb-3">Присоединиться к группе</h3>
-              <select
-                value={selectedGroupId}
-                onChange={(e) => setSelectedGroupId(e.target.value)}
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 mb-3"
-              >
+              <select value={selectedGroupId} onChange={(e) => setSelectedGroupId(e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 mb-3">
                 <option value="">Выберите вашу группу</option>
-                {allGroups.map(group => (
-                  <option key={group.id} value={group.id}>{group.name}</option>
-                ))}
+                {allGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}
               </select>
-              <button
-                onClick={handleJoinGroup}
-                disabled={!selectedGroupId || isJoining}
-                className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
-              >
+              <button onClick={handleJoinGroup} disabled={!selectedGroupId || isJoining} className="w-full bg-brand text-white py-2 rounded-md hover:bg-brand-dark disabled:bg-gray-400">
                 {isJoining ? 'Присоединение...' : 'Присоединиться'}
               </button>
             </div>

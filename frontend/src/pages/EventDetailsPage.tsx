@@ -83,18 +83,37 @@ const EventDetailsPage: React.FC = () => {
 
   const handleSignupToggle = async () => {
     if (!currentUser || !event) return;
-    const endpoint = event.signed_up ? 'unsubscribe' : 'signup';
+
+    const originalEvent = { ...event };
+    const isSigningUp = !event.signed_up;
+
+    // Optimistic update
+    setEvent(prevEvent => {
+      if (!prevEvent) return null;
+      return {
+        ...prevEvent,
+        signed_up: isSigningUp,
+        signup_count: (prevEvent.signup_count || 0) + (isSigningUp ? 1 : -1),
+      };
+    });
+
+    const endpoint = isSigningUp ? 'signup' : 'unsubscribe';
     try {
       const response = await fetch(`/api/events/${event.id}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id }),
       });
-      if (!response.ok) throw new Error('Operation failed');
-      // Refetch details to update signed_up status
+      if (!response.ok) {
+        throw new Error('Operation failed');
+      }
+      // Optionally refetch to ensure full consistency
       await fetchEventDetails();
     } catch (err: any) {
       setError(err.message);
+      // Revert on error
+      setEvent(originalEvent);
+      alert('Не удалось выполнить действие.');
     }
   };
 

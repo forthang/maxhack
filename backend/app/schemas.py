@@ -62,6 +62,8 @@ class UserOut(UserBase):
 class UniversityBase(BaseModel):
     name: str
     points: int = 0
+    description: Optional[str] = None
+    image_url: Optional[str] = None
 
 class UniversityOut(UniversityBase):
     id: int

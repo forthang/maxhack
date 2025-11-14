@@ -19,9 +19,41 @@ def seed_db():
         logger.info("Seeding database with initial data...")
 
         # --- Create Universities ---
+        universities_data = [
+            {
+                "name": "НИТУ МИСИС",
+                "description": "Национальный исследовательский технологический университет «МИСИС» — один из ведущих технических университетов России.",
+                "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/MISiS.svg/1200px-MISiS.svg.png"
+            },
+            {
+                "name": "МФТИ",
+                "description": "Московский физико-технический институт — ведущий российский вуз по подготовке специалистов в области теоретической, экспериментальной и прикладной физики, математики, информатики.",
+                "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/MIPT_Logo_rus_blue.svg/1200px-MIPT_Logo_rus_blue.svg.png"
+            },
+            {
+                "name": "СПбГУ",
+                "description": "Санкт-Петербургский государственный университет — один из старейших, крупнейших и ведущих классических университетов России.",
+                "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Spbu_logo_circle.svg/2048px-Spbu_logo_circle.svg.png"
+            },
+            {
+                "name": "МГУ",
+                "description": "Московский государственный университет имени М.В. Ломоносова — один из старейших и крупнейших классических университетов России.",
+                "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/MSU_main_building_logo.svg/1200px-MSU_main_building_logo.svg.png"
+            },
+            {
+                "name": "НГУ",
+                "description": "Новосибирский национальный исследовательский государственный университет — один из национальных исследовательских университетов России.",
+                "image_url": "https://upload.wikimedia.org/wikipedia/ru/thumb/3/35/Nsu-logo-2016.svg/1200px-Nsu-logo-2016.svg.png"
+            }
+        ]
         universities = []
-        for i in range(1, 6):
-            uni = University(name=f"Университет #{i}", points=0)
+        for uni_data in universities_data:
+            uni = University(
+                name=uni_data["name"],
+                description=uni_data["description"],
+                image_url=uni_data["image_url"],
+                points=0
+            )
             universities.append(uni)
         db.add_all(universities)
         db.commit()
