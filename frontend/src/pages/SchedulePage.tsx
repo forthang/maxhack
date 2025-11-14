@@ -8,6 +8,7 @@ import { ru } from 'date-fns/locale';
 import ClassCard from '../components/common/ClassCard';
 import EventCard from '../components/common/EventCard';
 import CreateEventForm from '../components/common/CreateEventForm';
+import Spinner from '../components/common/Spinner';
 
 // Types
 interface BackendScheduleItem {
@@ -79,7 +80,6 @@ const SchedulePage: React.FC = () => {
             type: 'class',
             sourceId: item.id,
             auditorium: item.auditorium,
-            // 'signed_up' for classes is not supported by backend, default to false
             signed_up: false, 
           });
         });
@@ -92,7 +92,7 @@ const SchedulePage: React.FC = () => {
           const duration = ev.duration_hours ?? 2;
           const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
           unified.push({
-            id: ev.id + 10000, // Offset to avoid key collision with schedule items
+            id: ev.id + 10000,
             start,
             end,
             title: ev.title,
@@ -147,6 +147,8 @@ const SchedulePage: React.FC = () => {
   };
 
   // Grid rendering logic
+  const GRID_START_HOUR = 7;
+  const GRID_END_HOUR = 23; // Display up to 22:xx
   const now = new Date();
   const currentDayOfWeek = (now.getDay() + 6) % 7;
   const weekStart = new Date(now);
@@ -165,32 +167,27 @@ const SchedulePage: React.FC = () => {
       const end = item.end;
       const diffStart = start.getTime() - weekStart.getTime();
       const dayIndex = Math.floor(diffStart / (24 * 60 * 60 * 1000));
-      if (dayIndex < 0 || dayIndex > 6) return null;
       
-      const startHour = start.getHours();
-      let span = Math.ceil((end.getTime() - start.getTime()) / (60 * 60 * 1000));
-      if (span < 1) span = 1;
-      if (startHour + span > 24) span = 24 - startHour;
+      const startHour = start.getHours() + start.getMinutes() / 60;
+      const endHour = end.getHours() + end.getMinutes() / 60;
 
-      return { ...item, dayIndex, startHour, span };
+      if (dayIndex < 0 || dayIndex > 6 || endHour < GRID_START_HOUR || startHour > GRID_END_HOUR) {
+        return null;
+      }
+      
+      const top = (startHour - GRID_START_HOUR) * 60; // 60px per hour
+      const height = (endHour - startHour) * 60;
+
+      return { ...item, dayIndex, top, height };
     })
-    .filter(Boolean) as Array<UnifiedItem & { dayIndex: number; startHour: number; span: number }>;
+    .filter(Boolean) as Array<UnifiedItem & { dayIndex: number; top: number; height: number }>;
 
   const formatDay = (date: Date): string => {
     return date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', weekday: 'short' });
   };
 
   // Render logic
-  if (!currentUser) {
-    return (
-        <div className="p-4 text-center">
-            <h2 className="text-xl font-semibold mb-2">Расписание недоступно</h2>
-            <p className="text-gray-600 dark:text-gray-400">Войдите, чтобы увидеть ваше расписание.</p>
-        </div>
-    )
-  }
-  if (!currentUser.group_id) {
-    // This is handled by the global AppModal, but as a fallback:
+  if (!currentUser || !currentUser.group_id) {
     return (
         <div className="p-4 text-center">
             <h2 className="text-xl font-semibold mb-2">Расписание пусто</h2>
@@ -215,37 +212,39 @@ const SchedulePage: React.FC = () => {
       </div>
       
       <div className="flex mb-4 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-        <button onClick={() => setView('schedule')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 ${view === 'schedule' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Сетка</button>
-        <button onClick={() => setView('events')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 ${view === 'events' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>События</button>
-        <button onClick={() => setView('my-events')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 ${view === 'my-events' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Мои события</button>
+        <button onClick={() => setView('schedule')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 transition-colors ${view === 'schedule' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-brand/80'}`}>Сетка</button>
+        <button onClick={() => setView('events')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 transition-colors ${view === 'events' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-brand/80'}`}>События</button>
+        <button onClick={() => setView('my-events')} className={`mr-4 pb-2 whitespace-nowrap border-b-2 transition-colors ${view === 'my-events' ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-brand/80'}`}>Мои события</button>
       </div>
 
-      {loading ? <p>Загрузка...</p> : (
+      {loading ? <Spinner /> : (
         <>
           {view === 'schedule' && (
-            <div className="relative overflow-x-auto rounded-lg shadow-inner">
+            <div className="relative overflow-x-auto rounded-lg shadow-inner bg-white dark:bg-gray-900">
               <div className="min-w-[900px] relative">
-                <div className="grid text-sm" style={{ gridTemplateColumns: '80px repeat(7, 1fr)', gridTemplateRows: `40px repeat(24, 60px)` }}>
-                  <div className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"></div>
-                  {days.map((day, idx) => <div key={idx} className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center font-medium text-gray-700 dark:text-gray-200">{formatDay(day)}</div>)}
-                  {Array.from({ length: 24 }).map((_, hour) => (
-                    <React.Fragment key={hour}>
-                      <div className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-1 text-right pr-2 text-gray-600 dark:text-gray-400">{String(hour).padStart(2, '0')}:00</div>
-                      {Array.from({ length: 7 }).map((__, col) => <div key={`${hour}-${col}`} className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"></div>)}
-                    </React.Fragment>
-                  ))}
+                <div className="grid text-sm" style={{ gridTemplateColumns: '80px repeat(7, 1fr)', gridTemplateRows: `40px repeat(${GRID_END_HOUR - GRID_START_HOUR}, 60px)` }}>
+                  <div className="sticky top-0 z-20 border-b border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"></div>
+                  {days.map((day, idx) => <div key={idx} className="sticky top-0 z-20 text-center p-2 border-b border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 font-medium text-gray-700 dark:text-gray-200">{formatDay(day)}</div>)}
+                  {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }).map((_, i) => {
+                    const hour = GRID_START_HOUR + i;
+                    return (
+                      <React.Fragment key={hour}>
+                        <div className="text-right pr-2 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">{String(hour).padStart(2, '0')}:00</div>
+                        {Array.from({ length: 7 }).map((__, col) => <div key={`${hour}-${col}`} className="border-r border-b border-gray-200 dark:border-gray-700"></div>)}
+                      </React.Fragment>
+                    )
+                  })}
                 </div>
-                <div className="absolute inset-0">
+                <div className="absolute top-[40px] left-[80px] right-0 bottom-0">
                   {itemsForGrid.map((item) => (
                     <div
                       key={item.id}
-                      className="fade-in z-10 rounded-md p-2 text-xs font-medium flex flex-col justify-between shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                      className="fade-in absolute z-10 rounded-md p-2 text-xs font-medium flex flex-col justify-between shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer"
                       style={{
-                        position: 'absolute',
-                        left: `calc(80px + (100% - 80px) * ${item.dayIndex} / 7)`,
-                        top: `${40 + item.startHour * 60}px`,
-                        width: 'calc((100% - 80px) / 7)',
-                        height: `${item.span * 60}px`,
+                        left: `calc((100% / 7) * ${item.dayIndex})`,
+                        top: `${item.top}px`,
+                        width: 'calc(100% / 7)',
+                        height: `${item.height}px`,
                         backgroundColor: item.type === 'event' ? 'rgba(99, 102, 241, 0.9)' : 'rgba(16, 185, 129, 0.9)',
                         color: 'white',
                       }}

@@ -67,9 +67,11 @@ def seed_db():
         today = date.today()
         schedule_items = []
         
-        subjects = ["Математический анализ", "Линейная алгебра", "История", "Программирование", "Физика"]
-        auditoriums = ["А-101", "Б-203", "В-305", "Г-404", "Д-501"]
-        class_times = [time(9, 0), time(11, 0), time(13, 30)]
+        subjects = ["Математический анализ", "Линейная алгебра", "История", "Программирование", "Физика", "Английский язык", "Базы данных"]
+        auditoriums = ["А-101", "Б-203", "В-305", "Г-404", "Д-501", "Е-110", "Ж-212"]
+        
+        # Generate classes from 9:00 to 16:00
+        class_start_times = [time(9, 0), time(10, 30), time(12, 0), time(13, 30), time(15, 0)]
 
         for group in all_groups:
             for i in range(14): # Two weeks from today
@@ -78,20 +80,39 @@ def seed_db():
                 if current_day.weekday() >= 5: # Saturday or Sunday
                     continue
 
-                for class_time in class_times:
+                for class_time in class_start_times:
                     start_datetime = datetime.combine(current_day, class_time)
-                    end_datetime = start_datetime + timedelta(hours=1, minutes=30) # Assuming 1.5h duration
+                    end_datetime = start_datetime + timedelta(hours=1, minutes=20) # 80 minute classes
 
                     schedule_item = ScheduleItem(
                         group_id=group.id,
                         start_time=start_datetime,
                         end_time=end_datetime,
-                        description=subjects[(i + class_times.index(class_time)) % len(subjects)],
-                        auditorium=auditoriums[(i + class_times.index(class_time)) % len(auditoriums)]
+                        description=subjects[(i + class_start_times.index(class_time)) % len(subjects)],
+                        auditorium=auditoriums[(i + class_start_times.index(class_time)) % len(auditoriums)]
                     )
                     schedule_items.append(schedule_item)
         
         db.add_all(schedule_items)
+        db.commit()
+        logger.info("Finished seeding schedule.")
+
+        # --- Create global events ---
+        logger.info("Seeding global events...")
+        events_to_add = []
+        for i in range(4):
+            event_day = today + timedelta(days=i)
+            event_time = datetime.combine(event_day, time(19, 0)) # 7 PM
+            new_event = models.Event(
+                title=f"Глобальное событие #{i+1}",
+                description=f"Описание для глобального события #{i+1}, которое состоится {event_day.strftime('%d.%m')}.",
+                event_time=event_time,
+                duration_hours=2,
+                auditorium="Главный актовый зал"
+            )
+            events_to_add.append(new_event)
+        
+        db.add_all(events_to_add)
         db.commit()
 
         logger.info("Database seeding complete.")
