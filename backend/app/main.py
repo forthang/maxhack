@@ -15,7 +15,7 @@ require a `user_id` query parameter where necessary.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .database import init_db
+from .db.init_db import init_db
 from .api import (
     schedule_router,
     # events_router,
