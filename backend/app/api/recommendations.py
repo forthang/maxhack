@@ -102,12 +102,26 @@ async def get_recommendations(user_id: int, db: Session = Depends(get_db)):
     
     # Fallback mechanism: If no recommendations from ML service, provide some default ones
     if not ml_recommendations:
+        if not all_events_db:
+            # If there are no events in the DB, we can't recommend anything
+            return []
+
         # Get some existing event IDs from all_events_db for fallback
         # Prioritize events that the user has not signed up for
         existing_event_ids = [event.id for event in all_events_db if not event.signed_up]
         
-        # Take up to n_recommendations from existing events
-        fallback_event_ids = existing_event_ids[:recommendation_request_payload["n_recommendations"]]
+        if not existing_event_ids:
+            # If all events are signed up, just pick any event
+            existing_event_ids = [event.id for event in all_events_db]
+
+        # Take up to n_recommendations from existing events, ensuring at least one if available
+        num_fallback = recommendation_request_payload["n_recommendations"]
+        if not existing_event_ids:
+            fallback_event_ids = []
+        elif len(existing_event_ids) < num_fallback:
+            fallback_event_ids = existing_event_ids
+        else:
+            fallback_event_ids = existing_event_ids[:num_fallback]
         
         # Construct mock ml_recommendations for the fallback
         ml_recommendations = [{"event_id": eid, "interest_probability": 0.5} for eid in fallback_event_ids]
