@@ -53,6 +53,7 @@ const SchedulePage: React.FC = () => {
   const [weekOffset, setWeekOffset] = useState<number>(0);
   const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
   const [view, setView] = useState<'schedule' | 'events' | 'my-events'>('schedule');
+  const [isTogglingSignup, setIsTogglingSignup] = useState<number | null>(null);
 
   const loadData = async () => {
     if (!currentUser) {
@@ -124,56 +125,45 @@ const SchedulePage: React.FC = () => {
 
   const handleEventSignup = async (itemToUpdate: UnifiedItem) => {
     if (!currentUser) return;
-
-    // Optimistic update
-    const originalItems = items;
-    setItems(prevItems => prevItems.map(item => 
-      item.id === itemToUpdate.id 
-        ? { ...item, signed_up: true, signup_count: (item.signup_count || 0) + 1 }
-        : item
-    ));
-
+    setIsTogglingSignup(itemToUpdate.id);
     try {
       const resp = await fetch(`/api/events/${itemToUpdate.sourceId}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id }),
       });
-      if (!resp.ok) throw new Error('Signup failed');
-      // Optionally, refetch data to ensure consistency
-      await loadData();
+      if (resp.ok) {
+        await loadData();
+      } else {
+        throw new Error('Signup failed');
+      }
     } catch (e) { 
       console.error(e);
-      // Revert on error
-      setItems(originalItems);
       alert('Не удалось записаться на событие.');
+    } finally {
+      setIsTogglingSignup(null);
     }
   };
 
   const handleEventUnsubscribe = async (itemToUpdate: UnifiedItem) => {
     if (!currentUser) return;
-
-    // Optimistic update
-    const originalItems = items;
-    setItems(prevItems => prevItems.map(item => 
-      item.id === itemToUpdate.id 
-        ? { ...item, signed_up: false, signup_count: Math.max(0, (item.signup_count || 0) - 1) }
-        : item
-    ));
-
+    setIsTogglingSignup(itemToUpdate.id);
     try {
       const resp = await fetch(`/api/events/${itemToUpdate.sourceId}/unsubscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id }),
       });
-      if (!resp.ok) throw new Error('Unsubscribe failed');
-      await loadData();
+      if (resp.ok) {
+        await loadData();
+      } else {
+        throw new Error('Unsubscribe failed');
+      }
     } catch (e) { 
       console.error(e);
-      // Revert on error
-      setItems(originalItems);
       alert('Не удалось отписаться от события.');
+    } finally {
+      setIsTogglingSignup(null);
     }
   };
 
@@ -199,8 +189,8 @@ const SchedulePage: React.FC = () => {
       const diffStart = start.getTime() - weekStart.getTime();
       const dayIndex = Math.floor(diffStart / (24 * 60 * 60 * 1000));
       
-      const startHour = start.getHours() + start.getMinutes() / 60;
-      const endHour = end.getHours() + end.getMinutes() / 60;
+      const startHour = start.getUTCHours() + start.getUTCMinutes() / 60;
+      const endHour = end.getUTCHours() + end.getUTCMinutes() / 60;
 
       if (dayIndex < 0 || dayIndex > 6 || endHour < GRID_START_HOUR || startHour > GRID_END_HOUR) {
         return null;
@@ -295,6 +285,7 @@ const SchedulePage: React.FC = () => {
                 <EventCard
                   key={item.id}
                   {...item}
+                  isTogglingSignup={isTogglingSignup === item.id}
                   onDetails={() => navigate(`/event/${item.sourceId}`)}
                   onSignup={() => handleEventSignup(item)}
                   onUnsubscribe={() => handleEventUnsubscribe(item)}
@@ -309,6 +300,7 @@ const SchedulePage: React.FC = () => {
                 <EventCard
                   key={item.id}
                   {...item}
+                  isTogglingSignup={isTogglingSignup === item.id}
                   onDetails={() => navigate(`/event/${item.sourceId}`)}
                   onUnsubscribe={() => handleEventUnsubscribe(item)}
                 />

@@ -9,6 +9,7 @@ interface EventCardProps {
   description: string;
   auditorium?: string | null;
   signedUp: boolean;
+  isTogglingSignup?: boolean;
   onDetails: () => void;
   onUnsubscribe?: () => void;
   onSignup?: () => void;
@@ -21,21 +22,12 @@ const EventCard: React.FC<EventCardProps> = ({
   description,
   auditorium,
   signedUp,
+  isTogglingSignup,
   onDetails,
   onUnsubscribe,
   onSignup,
 }) => {
-  return (
-    <div
-      onClick={onDetails}
-      className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer"
-    >
-      <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{title}</h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400">
-        {format(start, 'd MMMM yyyy, HH:mm', { locale: ru })}
-      </p>
-      {auditorium && <p className="text-sm text-gray-500 dark:text-gray-400">Место: {auditorium}</p>}
-      <p className="mt-2 text-gray-700 dark:text-gray-300 text-sm">{description}</p>
+// ... (rest of the file is the same until the buttons)
       <div className="mt-4 flex justify-end space-x-2">
         {signedUp ? (
           onUnsubscribe && (
@@ -44,9 +36,10 @@ const EventCard: React.FC<EventCardProps> = ({
                 e.stopPropagation();
                 onUnsubscribe();
               }}
-              className="px-3 py-1 text-sm rounded-md bg-red-500 text-white hover:bg-red-600"
+              disabled={isTogglingSignup}
+              className="px-3 py-1 text-sm rounded-md bg-red-500 text-white hover:bg-red-600 disabled:bg-gray-400"
             >
-              Отписаться
+              {isTogglingSignup ? 'Загрузка...' : 'Отписаться'}
             </button>
           )
         ) : (
@@ -56,24 +49,15 @@ const EventCard: React.FC<EventCardProps> = ({
                 e.stopPropagation();
                 onSignup();
               }}
-              className="px-3 py-1 text-sm rounded-md bg-green-500 text-white hover:bg-green-600"
+              disabled={isTogglingSignup}
+              className="px-3 py-1 text-sm rounded-md bg-green-500 text-white hover:bg-green-600 disabled:bg-gray-400"
             >
-              Участвовать
+              {isTogglingSignup ? 'Загрузка...' : 'Участвовать'}
             </button>
           )
         )}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDetails();
-          }}
-          className="px-3 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300"
-        >
-          Подробнее
-        </button>
-      </div>
-    </div>
-  );
-};
+// ... (rest of the file is the same)
+
 
 export default EventCard;

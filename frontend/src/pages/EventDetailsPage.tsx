@@ -44,6 +44,7 @@ const EventDetailsPage: React.FC = () => {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [isTogglingSignup, setIsTogglingSignup] = useState(false);
 
   const fetchEventDetails = async () => {
     if (!currentUser || !id) return;
@@ -83,21 +84,20 @@ const EventDetailsPage: React.FC = () => {
 
   const handleSignupToggle = async () => {
     if (!currentUser || !event) return;
-
+    
+    // Optimistic UI update
     const originalEvent = { ...event };
-    const isSigningUp = !event.signed_up;
+    const newSignedUp = !event.signed_up;
+    const newSignupCount = event.signed_up ? (event.signup_count ?? 1) - 1 : (event.signup_count ?? 0) + 1;
 
-    // Optimistic update
-    setEvent(prevEvent => {
-      if (!prevEvent) return null;
-      return {
-        ...prevEvent,
-        signed_up: isSigningUp,
-        signup_count: (prevEvent.signup_count || 0) + (isSigningUp ? 1 : -1),
-      };
+    setEvent({
+      ...event,
+      signed_up: newSignedUp,
+      signup_count: newSignupCount,
     });
 
-    const endpoint = isSigningUp ? 'signup' : 'unsubscribe';
+    setIsTogglingSignup(true);
+    const endpoint = originalEvent.signed_up ? 'unsubscribe' : 'signup';
     try {
       const response = await fetch(`/api/events/${event.id}/${endpoint}`, {
         method: 'POST',
@@ -105,15 +105,19 @@ const EventDetailsPage: React.FC = () => {
         body: JSON.stringify({ user_id: currentUser.id }),
       });
       if (!response.ok) {
+        // Revert on failure
+        setEvent(originalEvent);
         throw new Error('Operation failed');
       }
-      // Optionally refetch to ensure full consistency
-      await fetchEventDetails();
+      // Optional: refetch in the background to ensure data consistency
+      // await fetchEventDetails(); 
     } catch (err: any) {
       setError(err.message);
-      // Revert on error
+      // Revert on failure
       setEvent(originalEvent);
       alert('Не удалось выполнить действие.');
+    } finally {
+      setIsTogglingSignup(false);
     }
   };
 
@@ -185,8 +189,8 @@ const EventDetailsPage: React.FC = () => {
             {event.auditorium && <p className="text-sm">Место: {event.auditorium}</p>}
             <p className="text-sm">Участников: {event.signup_count ?? 0}</p>
             <div className="mt-4 flex space-x-2">
-                <button onClick={handleSignupToggle} className={`w-full py-2 rounded-md text-white ${event.signed_up ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
-                    {event.signed_up ? 'Отменить участие' : 'Участвовать'}
+                <button onClick={handleSignupToggle} disabled={isTogglingSignup} className={`w-full py-2 rounded-md text-white transition-colors disabled:bg-gray-400 ${event.signed_up ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
+                    {isTogglingSignup ? 'Загрузка...' : (event.signed_up ? 'Отменить участие' : 'Участвовать')}
                 </button>
                 <button onClick={() => setIsEditing(true)} className="w-full py-2 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300">
                     Редактировать

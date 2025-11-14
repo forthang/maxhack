@@ -7,7 +7,6 @@ const Education: React.FC = () => {
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
   const [completed, setCompleted] = useState<{ [key: string]: boolean }>({});
   const { currentUser, setCurrentUser } = useContext(UserContext);
-  const [isAdminMode, setIsAdminMode] = useState(false);
 
   // Derive the 'completed' map from the user context instead of localStorage
   useEffect(() => {
@@ -56,9 +55,6 @@ const Education: React.FC = () => {
     <div className="p-4 pb-20">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-semibold">Курсы</h2>
-        <button onClick={() => setIsAdminMode(!isAdminMode)} className="text-sm text-gray-500 hover:text-blue-600">
-          {isAdminMode ? 'Выйти из режима' : 'Режим'} админа
-        </button>
       </div>
 
       {!selectedTrack ? (
@@ -73,14 +69,6 @@ const Education: React.FC = () => {
               <span className="font-medium text-gray-900 dark:text-gray-100">{trackName}</span>
             </button>
           ))}
-          {isAdminMode && (
-            <button
-              onClick={() => alert('Функция создания курсов в разработке.')}
-              className="block w-full text-center bg-green-100 dark:bg-green-900 border-2 border-dashed border-green-400 text-green-700 dark:text-green-300 rounded-lg px-4 py-3 hover:bg-green-200 transition-all"
-            >
-              + Создать новое направление
-            </button>
-          )}
         </div>
       ) : (
         <div className="fade-in">
@@ -90,9 +78,6 @@ const Education: React.FC = () => {
           >
             ← Назад к направлениям
           </button>
-          {isAdminMode && (
-             <button onClick={() => alert('Функция редактирования в разработке.')} className="ml-4 text-sm text-blue-500">Редактировать</button>
-          )}
           <CourseGraph
             root={courseTrees[selectedTrack]}
             completed={completed}
