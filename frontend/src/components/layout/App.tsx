@@ -17,9 +17,22 @@ import ScheduleItemDetailsPage from '../../pages/ScheduleItemDetailsPage';
 import UniversityDetailsPage from '../../pages/UniversityDetailsPage';
 import CourseDetailsPage from '../../pages/CourseDetailsPage';
 
+// NavLink is now a standalone component and is not recreated on every render.
+const NavLink: React.FC<{ to: string; label: string; icon: React.ReactNode }> = ({ to, label, icon }) => {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+  return (
+    <Link to={to} className="flex flex-col items-center justify-center w-1/4 h-full text-sm transition-colors group">
+      <div className={`p-2 rounded-full transition-all ${isActive ? 'bg-brand/20 text-brand' : 'text-neutral-500 group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700'}`}>
+        {icon}
+      </div>
+      <span className={`mt-1 text-xs font-medium ${isActive ? 'text-brand' : 'text-neutral-500'}`}>{label}</span>
+    </Link>
+  );
+};
+
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
   
   // This is now the single source of truth for the user state.
@@ -38,18 +51,6 @@ const App: React.FC = () => {
   // Memoize context values. The context now gets the state and setter from App.
   const themeContextValue = useMemo(() => ({ darkMode, toggleTheme: () => setDarkMode(p => !p) }), [darkMode]);
   const userContextValue = useMemo(() => ({ currentUser, setCurrentUser }), [currentUser]);
-
-  const NavLink: React.FC<{ to: string; label: string; icon: React.ReactNode }> = ({ to, label, icon }) => {
-    const isActive = location.pathname === to;
-    return (
-      <Link to={to} className="flex flex-col items-center justify-center w-1/4 h-full text-sm transition-colors group">
-        <div className={`p-2 rounded-full transition-all ${isActive ? 'bg-brand/20 text-brand' : 'text-neutral-500 group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700'}`}>
-          {icon}
-        </div>
-        <span className={`mt-1 text-xs font-medium ${isActive ? 'text-brand' : 'text-neutral-500'}`}>{label}</span>
-      </Link>
-    );
-  };
 
   // --- Loading and Error States ---
   if (isLoading) {
@@ -119,7 +120,7 @@ const App: React.FC = () => {
             )}
 
             <main className={`flex-grow pb-24 ${isApplicant ? 'blur-sm' : ''}`}>
-                <Routes location={location} key={location.pathname}>
+                <Routes>
                   <Route path="/" element={<PageWrapper><SchedulePage /></PageWrapper>} />
                   <Route path="/events" element={<PageWrapper><EventsPage /></PageWrapper>} />
                   <Route path="/education" element={<PageWrapper><EducationPage /></PageWrapper>} />
@@ -148,3 +149,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

@@ -2,6 +2,11 @@ import React, { useContext, useState, useEffect } from 'react';
 import { ThemeContext, UserContext } from '../context/AppContext';
 import StorePage from './StorePage';
 
+// This wrapper is now a standalone component and won't be recreated on every render.
+const StorePageWrapper: React.FC = () => {
+  return <StorePage inline />;
+};
+
 const Profile: React.FC = () => {
   const { darkMode, toggleTheme } = useContext(ThemeContext);
   const { currentUser } = useContext(UserContext);
@@ -16,18 +21,10 @@ const Profile: React.FC = () => {
   const [achievements, setAchievements] = useState<string>('Победитель хакатона');
   const [progress, setProgress] = useState<number>(60);
 
-  // This local state is no longer needed as it comes from currentUser
-  // const [universityName, setUniversityName] = useState<string | null>(null);
-  // const [groupName, setGroupName] = useState<string | null>(null);
-
   // The API call is no longer needed here, as the user object is provided by the context
   useEffect(() => {
     // The user object is now passed via context from useMaxApp hook
   }, [currentUser]);
-
-  const StorePageWrapper: React.FC = () => {
-    return <StorePage inline />;
-  };
 
   if (!currentUser) {
     return <div>Загрузка профиля...</div>;

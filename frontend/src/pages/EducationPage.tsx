@@ -162,11 +162,14 @@ const Education: React.FC = () => {
           >
             ← Назад к направлениям
           </button>
-          <CourseGraph
+          {/* <CourseGraph
             root={courseTrees[selectedTrack]}
             completed={completed}
             onComplete={handleComplete}
-          />
+          /> */}
+          <div className="p-4 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+            <p className="text-yellow-800 dark:text-yellow-200">Граф курсов временно отключен для отладки.</p>
+          </div>
         </div>
       )}
     </div>
