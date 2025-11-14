@@ -49,7 +49,6 @@ const SchedulePage: React.FC = () => {
   const navigate = useNavigate();
 
   const [items, setItems] = useState<UnifiedItem[]>([]);
-  const [recommendedEvents, setRecommendedEvents] = useState<BackendEventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState<number>(0);
   const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
@@ -63,10 +62,9 @@ const SchedulePage: React.FC = () => {
     }
     setLoading(true);
     try {
-      const [scheduleResp, eventsResp, recommendationsResp] = await Promise.all([
+      const [scheduleResp, eventsResp] = await Promise.all([
         fetch(`/api/schedule?user_id=${currentUser.id}`),
         fetch(`/api/events?user_id=${currentUser.id}`),
-        fetch(`/api/recommendations/${currentUser.id}`),
       ]);
       
       const unified: UnifiedItem[] = [];
@@ -107,11 +105,6 @@ const SchedulePage: React.FC = () => {
             auditorium: ev.auditorium,
           });
         });
-      }
-
-      if (recommendationsResp.ok) {
-        const recommendationsData: BackendEventItem[] = await recommendationsResp.json();
-        setRecommendedEvents(recommendationsData);
       }
 
       setItems(unified);
@@ -225,6 +218,39 @@ const SchedulePage: React.FC = () => {
     )
   }
 
+  const mockRecommendations: BackendEventItem[] = [
+    {
+      id: 9001,
+      event_time: new Date(new Date().getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
+      title: "Введение в ИИ",
+      description: "Познакомьтесь с основами искусственного интеллекта и его применением.",
+      duration_hours: 3,
+      auditorium: "Онлайн",
+      signup_count: 50,
+      signed_up: false,
+    },
+    {
+      id: 9002,
+      event_time: new Date(new Date().getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days from now
+      title: "Мастер-класс по React",
+      description: "Практическое занятие по созданию компонентов на React.",
+      duration_hours: 4,
+      auditorium: "Ауд. 201",
+      signup_count: 30,
+      signed_up: false,
+    },
+    {
+      id: 9003,
+      event_time: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+      title: "Python для анализа данных",
+      description: "Изучите библиотеки Pandas и NumPy для обработки и анализа данных.",
+      duration_hours: 2,
+      auditorium: "Онлайн",
+      signup_count: 70,
+      signed_up: false,
+    },
+  ];
+
   return (
     <div className="p-4 pb-20">
       <div className="flex items-center justify-between mb-4">
@@ -319,24 +345,18 @@ const SchedulePage: React.FC = () => {
           )}
           {view === 'recommendations' && (
             <div className="space-y-4">
-              {recommendedEvents.length > 0 ? (
-                recommendedEvents.map((event) => (
-                  <EventCard
-                    key={event.id}
-                    start={new Date(event.event_time)}
-                    end={new Date(new Date(event.event_time).getTime() + event.duration_hours * 60 * 60 * 1000)}
-                    title={event.title}
-                    description={event.description}
-                    auditorium={event.auditorium}
-                    signedUp={event.signed_up || false}
-                    onDetails={() => navigate(`/event/${event.id}`)}
-                    // For recommendations, we don't offer direct signup/unsubscribe here
-                    // The user can go to the event details page to do that.
-                  />
-                ))
-              ) : (
-                <p className="text-center text-gray-500">Пока нет рекомендаций.</p>
-              )}
+              {mockRecommendations.map((event) => (
+                <EventCard
+                  key={event.id}
+                  start={new Date(event.event_time)}
+                  end={new Date(new Date(event.event_time).getTime() + event.duration_hours * 60 * 60 * 1000)}
+                  title={event.title}
+                  description={event.description}
+                  auditorium={event.auditorium}
+                  signedUp={event.signed_up || false}
+                  onDetails={() => navigate(`/event/${event.id}`)}
+                />
+              ))}
             </div>
           )}
         </>
