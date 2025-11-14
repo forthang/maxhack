@@ -28,7 +28,6 @@ interface UniversityDetails {
   name: string;
   points: number;
   description: string | null;
-  image_url: string | null;
   specializations: Specialization[];
 }
 interface StudentLeaderboardEntry {
@@ -121,7 +120,6 @@ const UniversityDetailsPage: React.FC = () => {
         ← Назад к списку
       </button>
       <div className="flex items-center mb-2">
-        <img src={university.image_url || `https://api.dicebear.com/6.x/initials/svg?seed=${university.name}`} alt={university.name} className="w-16 h-16 rounded-full mr-4 object-contain"/>
         <div>
             <h2 className="text-2xl font-semibold">{university.name}</h2>
             <p className="text-gray-600 dark:text-gray-400">Очки: {university.points}</p>

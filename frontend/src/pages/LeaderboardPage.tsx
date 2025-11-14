@@ -7,7 +7,6 @@ interface University {
   id: number;
   name: string;
   points: number;
-  image_url: string | null;
 }
 
 interface LeaderboardEntry {
@@ -69,7 +68,6 @@ const LeaderboardPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <div className="w-8 text-center">{getMedal(entry.rank)}</div>
-                <img src={entry.university.image_url || `https://api.dicebear.com/6.x/initials/svg?seed=${entry.university.name}`} alt={entry.university.name} className="w-10 h-10 rounded-full ml-2 mr-4 object-contain"/>
                 <span className="font-medium text-gray-900 dark:text-gray-100">{entry.university.name}</span>
               </div>
               <div className="text-right">
