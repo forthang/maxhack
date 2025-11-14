@@ -19,19 +19,9 @@ from enum import Enum
 
 from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Enum as PgEnum
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from .db.session import Base
-
-
-class UserRole(str, Enum):
-    """Enumeration of possible user roles.
-
-    We distinguish between students and teachers. Applicants will be represented
-    as students until they enroll; the invitation link determines the role.
-    """
-
-    student = "student"
-    teacher = "teacher"
 
 
 class User(Base):
@@ -60,10 +50,12 @@ class User(Base):
     coins = Column(Integer, default=0)
 
     group = relationship("Group", back_populates="students")
-    university = relationship("University")
+    university = relationship("University", back_populates="users")
     completed_courses = relationship("CompletedCourse", back_populates="user")
     purchases = relationship("PurchasedItem", back_populates="user")
     event_signups = relationship("EventSignup", back_populates="user")
+    event_reviews = relationship("EventReview", back_populates="user")
+    course_reviews = relationship("CourseReview", back_populates="user")
 
 
 class University(Base):
@@ -76,6 +68,7 @@ class University(Base):
     points = Column(Integer, default=0)
 
     specializations = relationship("Specialization", back_populates="university")
+    users = relationship("User", back_populates="university")
 
 
 class Specialization(Base):
@@ -149,9 +142,8 @@ class Event(Base):
     # Optional auditorium or location of the event.
     auditorium = Column(String, nullable=True)
 
-    # Note: We previously stored the creator ID here. To simplify the
-    # schema and avoid migrations, this column has been removed. Events
-    # created by users will not reference their creator in this version.
+    signups = relationship("EventSignup", back_populates="event")
+    reviews = relationship("EventReview", back_populates="event")
 
 
 class EventSignup(Base):
@@ -169,7 +161,7 @@ class EventSignup(Base):
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
 
     user = relationship("User", back_populates="event_signups")
-    event = relationship("Event")
+    event = relationship("Event", back_populates="signups")
 
 
 class CompletedCourse(Base):
@@ -205,8 +197,6 @@ class PurchasedItem(Base):
     user = relationship("User", back_populates="purchases")
 
 
-from sqlalchemy.sql import func
-
 class EventReview(Base):
     __tablename__ = "event_reviews"
 
@@ -217,8 +207,8 @@ class EventReview(Base):
     comment = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    event = relationship("Event")
-    user = relationship("User")
+    event = relationship("Event", back_populates="reviews")
+    user = relationship("User", back_populates="event_reviews")
 
 class CourseReview(Base):
     __tablename__ = "course_reviews"
@@ -230,4 +220,4 @@ class CourseReview(Base):
     comment = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    user = relationship("User")
+    user = relationship("User", back_populates="course_reviews")

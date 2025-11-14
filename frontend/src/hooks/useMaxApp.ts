@@ -15,17 +15,17 @@ export const useInitialUserLoad = (): MaxAppHook => {
 
   useEffect(() => {
     const login = async () => {
-      let userData;
       try {
-        // 1. Check for MAX Bridge
+        // 1. Check for MAX Bridge and prepare payload
+        let payload;
         // @ts-ignore
         const webApp = window.WebApp;
 
-        if (!webApp || !webApp.initDataUnsafe || !webApp.initDataUnsafe.user) {
+        if (!webApp || !webApp.initData) {
           const errorMsg = "MAX Bridge data not found. Using mock user data for development.";
           console.warn(errorMsg);
           // Provide mock user data for development/testing
-          userData = {
+          payload = {
             id: -1, // Use a distinct ID for mock user
             first_name: "Mock",
             last_name: "User",
@@ -34,18 +34,14 @@ export const useInitialUserLoad = (): MaxAppHook => {
             language_code: "ru",
           };
         } else {
-          userData = webApp.initDataUnsafe.user;
-        }
-
-        if (!userData || !userData.id) {
-          throw new Error("User ID not found in MAX Bridge data or mock data generation failed.");
+          payload = { initData: webApp.initData };
         }
         
         // 2. Call the /api/auth/login endpoint
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(userData),
+          body: JSON.stringify(payload),
         });
 
         if (!response.ok) {

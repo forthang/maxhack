@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../../context/AppContext';
 
 export const AppModals: React.FC = () => {
-  console.log('[Render] AppModals');
   
   const { currentUser } = useContext(UserContext);
   const navigate = useNavigate();

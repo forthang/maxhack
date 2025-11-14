@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ThemeContext, UserContext } from '../../context/AppContext';
 import { User } from '../../types/user';
 
@@ -8,25 +8,20 @@ interface AppProvidersProps {
 }
 
 export const AppProviders: React.FC<AppProvidersProps> = ({ initialUser, children }) => {
-  console.log('[Render] AppProviders');
-
-  const [darkMode, setDarkMode] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    console.log('[Effect] AppProviders: initialUser changed', initialUser);
-    if (initialUser) {
-      setCurrentUser(initialUser);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
-  }, [initialUser]);
+    return false;
+  });
+  
+  const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
 
   const themeContextValue = useMemo(() => {
-    console.log('[Memo] Recomputing themeContextValue');
     return { darkMode, toggleTheme: () => setDarkMode(p => !p) };
   }, [darkMode]);
 
   const userContextValue = useMemo(() => {
-    console.log('[Memo] Recomputing userContextValue');
     return { currentUser, setCurrentUser };
   }, [currentUser]);
 
