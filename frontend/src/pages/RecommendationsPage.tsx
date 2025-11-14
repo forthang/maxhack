@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { UserContext } from '../context/AppContext';
-import { EventCard } from '../components/common/EventCard'; // Assuming EventCard is exported
+import EventCard from '../components/common/EventCard'; // Assuming EventCard is exported
 import Spinner from '../components/common/Spinner'; // Assuming Spinner is exported
 import { useNavigate } from 'react-router-dom';
 
