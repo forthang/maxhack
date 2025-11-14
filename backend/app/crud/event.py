@@ -3,6 +3,37 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from .. import models, schemas
 
+def get_events(db: Session, user_id: Optional[int] = None) -> List[schemas.EventOut]:
+    """Return all events sorted by time, optimized to avoid N+1 queries."""
+    events = db.query(models.Event).options(joinedload(models.Event.signups)).order_by(models.Event.event_time).all()
+    
+    result: List[schemas.EventOut] = []
+    for event in events:
+        signup_count = len(event.signups)
+        user_signed = False
+        if user_id is not None:
+            user_signed = any(signup.user_id == user_id for signup in event.signups)
+            
+        event_dict = event.__dict__.copy()
+        event_dict["recommended_skills"] = event.recommended_skills.split(",") if event.recommended_skills else []
+        
+        event_out = schemas.EventOut.model_validate(event_dict)
+        event_out = event_out.model_copy(update={"signup_count": signup_count, "signed_up": user_signed})
+        result.append(event_out)
+    return result
+
+def get_event(db: Session, event_id: int) -> Optional[schemas.EventOut]:
+    """Return a single event by its ID."""
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if event is None:
+        return None
+    
+    event_dict = event.__dict__.copy()
+    event_dict["recommended_skills"] = event.recommended_skills.split(",") if event.recommended_skills else []
+    
+    event_out = schemas.EventOut.model_validate(event_dict)
+    return event_out
+
 def create_event(db: Session, payload: schemas.EventBase) -> schemas.EventOut:
     """Create a new event and return it."""
     event_data = payload.model_dump()
@@ -16,8 +47,10 @@ def create_event(db: Session, payload: schemas.EventBase) -> schemas.EventOut:
     db.commit()
     db.refresh(event)
     
-    event_out = schemas.EventOut.model_validate(event)
-    event_out.recommended_skills = event.recommended_skills.split(",") if event.recommended_skills else []
+    event_dict = event.__dict__.copy()
+    event_dict["recommended_skills"] = event.recommended_skills.split(",") if event.recommended_skills else []
+    
+    event_out = schemas.EventOut.model_validate(event_dict)
     return event_out
 
 def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Optional[schemas.EventOut]:
@@ -37,38 +70,10 @@ def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Op
     db.commit()
     db.refresh(event)
     
-    event_out = schemas.EventOut.model_validate(event)
-    event_out.recommended_skills = event.recommended_skills.split(",") if event.recommended_skills else []
-    return event_out
-
-def get_events(db: Session, user_id: Optional[int] = None) -> List[schemas.EventOut]:
-    """Return all events sorted by time, optimized to avoid N+1 queries."""
-    # Eager load signups to prevent N+1 queries in the loop
-    events = db.query(models.Event).options(joinedload(models.Event.signups)).order_by(models.Event.event_time).all()
+    event_dict = event.__dict__.copy()
+    event_dict["recommended_skills"] = event.recommended_skills.split(",") if event.recommended_skills else []
     
-    result: List[schemas.EventOut] = []
-    for event in events:
-        signup_count = len(event.signups)
-        user_signed = False
-        if user_id is not None:
-            # Check in-memory signups instead of a new DB query
-            user_signed = any(signup.user_id == user_id for signup in event.signups)
-            
-        event_out = schemas.EventOut.model_validate(event)
-        # Ensure recommended_skills is always a list
-        event_out.recommended_skills = event.recommended_skills.split(",") if event.recommended_skills else []
-        event_out = event_out.model_copy(update={"signup_count": signup_count, "signed_up": user_signed})
-        result.append(event_out)
-    return result
-
-def get_event(db: Session, event_id: int) -> Optional[schemas.EventOut]:
-    """Return a single event by its ID."""
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
-    if event is None:
-        return None
-    event_out = schemas.EventOut.model_validate(event)
-    # Ensure recommended_skills is always a list
-    event_out.recommended_skills = event.recommended_skills.split(",") if event.recommended_skills else []
+    event_out = schemas.EventOut.model_validate(event_dict)
     return event_out
 
 def signup_for_event(db: Session, event_id: int, user_id: int) -> bool:
