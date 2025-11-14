@@ -56,9 +56,9 @@ def on_startup() -> None:
 # into separate modules clarifies their responsibilities and makes the
 # codebase easier to extend.
 app.include_router(schedule_router)
-app.include_router(events_router)
-app.include_router(leaderboard_router)
-app.include_router(university_router)
+# app.include_router(events_router)
+# app.include_router(leaderboard_router)
+# app.include_router(university_router)
 app.include_router(profile_router)
 
 
