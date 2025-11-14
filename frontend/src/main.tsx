@@ -13,9 +13,8 @@ if (!container) throw new Error('Root container missing');
 
 const root = createRoot(container);
 root.render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>,
+  // Temporarily removed React.StrictMode for debugging purposes
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>,
 );
