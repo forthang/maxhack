@@ -199,8 +199,8 @@ class EventRecommendationModel:
         Обучает модель на истории пользователя.
         Возвращает True если модель обучена, False если недостаточно данных для обучения.
         """
-        MIN_EVENTS_FOR_TRAINING = 100
-        MIN_POSITIVE_EXAMPLES = 50
+        MIN_EVENTS_FOR_TRAINING = 1
+        MIN_POSITIVE_EXAMPLES = 1
         
         if len(user_profile.visited_events) < MIN_EVENTS_FOR_TRAINING:
             self.is_trained = False

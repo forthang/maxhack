@@ -34,11 +34,30 @@ async def get_recommendations(user_id: int, db: Session = Depends(get_db)):
 
     # 4. Prepare UserProfile for ML service
     # Note: The ML service's UserProfile expects 'interesting_skills' as List[str]
-    # and 'visited_events' as List[EventAttendance].
+    # and 'visited_events' as List[EventAttendance>.
     # We need to map our DB schema to the ML service's schema.
-    
-    # Assuming user_profile_db.skills is a list of skill names (strings)
-    ml_user_skills = [skill.name for skill in user_profile_db.skills] if user_profile_db.skills else []
+
+    # Fetch available skills from ML service to validate/match
+    try:
+        skills_response = await httpx.AsyncClient().get(f"{ML_SERVICE_URL}/skills")
+        skills_response.raise_for_status()
+        available_skills = skills_response.json().get("skills", [])
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"ML service error fetching skills: {e.response.text}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Could not connect to ML service for skills: {e}")
+
+    ml_user_skills = []
+    # Derive interesting_skills from completed courses
+    for completed_course in user_profile_db.completed_courses:
+        course_id_lower = completed_course.course_id.lower()
+        # Simple keyword matching for now
+        for skill in available_skills:
+            if skill.lower() in course_id_lower:
+                ml_user_skills.append(skill)
+    # Add some default skills if no courses completed, or if user has no skills
+    if not ml_user_skills:
+        ml_user_skills.extend(["Python", "JavaScript", "Data Science"]) # Default skills
 
     # Assuming user_profile_db.event_signups contains event attendance info
     ml_visited_events = []
@@ -56,7 +75,7 @@ async def get_recommendations(user_id: int, db: Session = Depends(get_db)):
     
     ml_user_profile = {
         "user_id": user_profile_db.id,
-        "interesting_skills": ml_user_skills,
+        "interesting_skills": list(set(ml_user_skills)), # Remove duplicates
         "education_place": user_profile_db.university.name if user_profile_db.university else None,
         "visited_events": ml_visited_events
     }

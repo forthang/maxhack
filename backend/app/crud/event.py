@@ -8,6 +8,8 @@ def create_event(db: Session, payload: schemas.EventBase) -> schemas.EventOut:
     event_data = payload.model_dump()
     if "recommended_skills" in event_data and event_data["recommended_skills"] is not None:
         event_data["recommended_skills"] = ",".join(event_data["recommended_skills"])
+    else:
+        event_data["recommended_skills"] = "" # Store as empty string if None
     
     event = models.Event(**event_data)
     db.add(event)
@@ -15,8 +17,7 @@ def create_event(db: Session, payload: schemas.EventBase) -> schemas.EventOut:
     db.refresh(event)
     
     event_out = schemas.EventOut.model_validate(event)
-    if event.recommended_skills:
-        event_out.recommended_skills = event.recommended_skills.split(",")
+    event_out.recommended_skills = event.recommended_skills.split(",") if event.recommended_skills else []
     return event_out
 
 def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Optional[schemas.EventOut]:
@@ -28,6 +29,8 @@ def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Op
     update_data = payload.model_dump(exclude_unset=True)
     if "recommended_skills" in update_data and update_data["recommended_skills"] is not None:
         update_data["recommended_skills"] = ",".join(update_data["recommended_skills"])
+    elif "recommended_skills" in update_data and update_data["recommended_skills"] is None:
+        update_data["recommended_skills"] = "" # Store as empty string if None
     
     for key, value in update_data.items():
         setattr(event, key, value)
@@ -35,8 +38,7 @@ def update_event(db: Session, event_id: int, payload: schemas.EventUpdate) -> Op
     db.refresh(event)
     
     event_out = schemas.EventOut.model_validate(event)
-    if event.recommended_skills:
-        event_out.recommended_skills = event.recommended_skills.split(",")
+    event_out.recommended_skills = event.recommended_skills.split(",") if event.recommended_skills else []
     return event_out
 
 def get_events(db: Session, user_id: Optional[int] = None) -> List[schemas.EventOut]:
@@ -53,8 +55,8 @@ def get_events(db: Session, user_id: Optional[int] = None) -> List[schemas.Event
             user_signed = any(signup.user_id == user_id for signup in event.signups)
             
         event_out = schemas.EventOut.model_validate(event)
-        if event.recommended_skills:
-            event_out.recommended_skills = event.recommended_skills.split(",")
+        # Ensure recommended_skills is always a list
+        event_out.recommended_skills = event.recommended_skills.split(",") if event.recommended_skills else []
         event_out = event_out.model_copy(update={"signup_count": signup_count, "signed_up": user_signed})
         result.append(event_out)
     return result
@@ -65,8 +67,8 @@ def get_event(db: Session, event_id: int) -> Optional[schemas.EventOut]:
     if event is None:
         return None
     event_out = schemas.EventOut.model_validate(event)
-    if event.recommended_skills:
-        event_out.recommended_skills = event.recommended_skills.split(",")
+    # Ensure recommended_skills is always a list
+    event_out.recommended_skills = event.recommended_skills.split(",") if event.recommended_skills else []
     return event_out
 
 def signup_for_event(db: Session, event_id: int, user_id: int) -> bool:
