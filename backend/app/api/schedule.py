@@ -1,52 +1,50 @@
-"""Schedule endpoints.
-
-This module defines HTTP endpoints related to the academic schedule. It
-provides read access to schedule items and allows anonymous users to
-register for them. The actual data access is delegated to the `crud`
-module to keep route handlers succinct.
-"""
-
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from typing import List
 
 from .. import crud, models, schemas
-from ..database import SessionLocal
-
-
-def get_db():
-    """Dependency that provides a SQLAlchemy session."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+from .deps import get_current_user, get_db
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
 
-
-@router.get("", response_model=list[schemas.ScheduleItemOut])
-def read_schedule(user_id: int | None = None, db: Session = Depends(get_db)) -> list[schemas.ScheduleItemOut]:
-    """Return the full schedule.
-
-    If a user_id is provided, annotate each item with whether the user has
-    registered. When omitted, anonymous users always see signed_up=False.
-    """
-    return crud.get_schedule(db, user_id)
-
-
-@router.post("/{schedule_id}/signup", response_model=dict, status_code=status.HTTP_200_OK)
-def signup_schedule_item(
-    schedule_id: int = Path(..., description="ID of the schedule item"),
+@router.get("", response_model=List[schemas.ScheduleItemOut])
+def read_schedule(
     db: Session = Depends(get_db),
-) -> dict[str, bool]:
-    """Sign up anonymously for a schedule item.
-
-    Always returns ``{"created": True}`` even if duplicate, mirroring the
-    original behaviour.
+    current_user: models.User = Depends(get_current_user),
+) -> List[schemas.ScheduleItemOut]:
     """
-    schedule = db.query(models.ScheduleItem).filter(models.ScheduleItem.id == schedule_id).first()
-    if schedule is None:
-        raise HTTPException(status_code=404, detail="Расписание не найдено")
-    crud.signup_for_schedule(db, schedule_id, None)
-    return {"created": True}
+    Return the personalized schedule for the current user.
+    This includes classes for their group and events they are subscribed to.
+    """
+    output_items = []
+
+    # 1. Get group-specific classes if the user is in a group
+    if current_user.group_id:
+        group_schedule = crud.schedule.get_by_group(db, group_id=current_user.group_id)
+        for item in group_schedule:
+            output_items.append(
+                schemas.ScheduleItemOut(
+                    id=item.id,
+                    title=item.subject,
+                    start_time=item.start_time.strftime('%H:%M'),
+                    end_time=item.end_time.strftime('%H:%M'),
+                    location=item.location,
+                    type='class',
+                )
+            )
+
+    # 2. Get subscribed events
+    subscribed_events = crud.event.get_subscribed_by_user(db, user_id=current_user.id)
+    for event in subscribed_events:
+        output_items.append(
+            schemas.ScheduleItemOut(
+                id=event.id,
+                title=event.title,
+                start_time=event.start_time.isoformat(),
+                end_time=event.end_time.isoformat(),
+                location=event.location,
+                type='event',
+            )
+        )
+        
+    return output_items

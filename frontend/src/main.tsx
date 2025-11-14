@@ -1,11 +1,8 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import App from './App';
-
-// Root entrypoint for the React application. Wraps the application in
-// MaxUI provider and React Router. Dark/light theme handling is
-// implemented inside App.
+import App from './components/layout/App';
+import './styles/index.css';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Root container missing');
@@ -16,5 +13,5 @@ root.render(
     <BrowserRouter>
       <App />
     </BrowserRouter>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
