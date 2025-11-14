@@ -57,7 +57,6 @@ const EventCard: React.FC<EventCardProps> = ({
           )
         )}
         <button
-        <button
           onClick={onDetails}
           className="px-3 py-1 text-sm rounded-md bg-blue-500 text-white hover:bg-blue-600"
         >
